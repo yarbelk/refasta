@@ -17,7 +17,7 @@ func TestFastaScanReturnsSequenceName(t *testing.T) {
 	}
 
 	expectedLit := "Sequence Identifier"
-	if lit != expectedLit {
+	if string(lit) != expectedLit {
 		t.Errorf("Sequence should be '%s', was '%s'", expectedLit, lit)
 	}
 }
@@ -32,7 +32,7 @@ func TestInvalidCharacterReturnsScanTokenInvalid(t *testing.T) {
 	}
 
 	expectedLit := ""
-	if lit != expectedLit {
+	if string(lit) != expectedLit {
 		t.Errorf("Sequence should be '%s', was '%s'", expectedLit, lit)
 	}
 }
@@ -47,7 +47,7 @@ func TestFastaScanScansNucleotideData(t *testing.T) {
 	}
 
 	expectedLit := "ATGCGTA"
-	if lit != expectedLit {
+	if string(lit) != expectedLit {
 		t.Errorf("Sequence should be '%s', was '%s'", expectedLit, lit)
 	}
 }
@@ -62,7 +62,7 @@ func TestFastaScanScansNucleotideDataWithNewline(t *testing.T) {
 	}
 
 	expectedLit := "ATGCGTA"
-	if lit != expectedLit {
+	if string(lit) != expectedLit {
 		t.Errorf("Sequence should be '%s', was '%s'", expectedLit, lit)
 	}
 }
@@ -77,7 +77,7 @@ func TestFastaScanScansNucleotideDataWithNewlineAndNewSequence(t *testing.T) {
 	}
 
 	expectedLit := "ATGCGTA"
-	if lit != expectedLit {
+	if string(lit) != expectedLit {
 		t.Errorf("Sequence should be '%s', was '%s'", expectedLit, lit)
 	}
 }
@@ -102,8 +102,8 @@ func TestFastaScanTwoSequencesInTotal(t *testing.T) {
 			t.Errorf("token should have been '%d', was '%d'", v.Tok, tok)
 		}
 
-		if lit != v.Data {
-			t.Errorf("value should be '%s', was '%s'", v.Data, lit)
+		if string(lit) != v.Data {
+			t.Errorf("value should be '%s', was '%s'", v.Data, string(lit))
 		}
 	}
 }
