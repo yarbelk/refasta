@@ -81,3 +81,29 @@ func TestFastaScanScansNucleotideDataWithNewlineAndNewSequence(t *testing.T) {
 		t.Errorf("Sequence should be '%s', was '%s'", expectedLit, lit)
 	}
 }
+
+func TestFastaScanTwoSequencesInTotal(t *testing.T) {
+	type expected struct {
+		Tok  formats.Token
+		Data string
+	}
+	expecteds := []expected{
+		expected{formats.SEQUENCE_ID, "foo"},
+		expected{formats.SEQUENCE_DATA, "ATGCGTA"},
+		expected{formats.SEQUENCE_ID, "bar"},
+		expected{formats.SEQUENCE_DATA, "TATGCGTAT"},
+	}
+	reader := bytes.NewReader([]byte(">foo\nATG\nCGTA\n>bar\nTATGC\nGTAT"))
+	fastaScanner := formats.NewFastaScanner(reader)
+
+	for _, v := range expecteds {
+		tok, lit := fastaScanner.Scan()
+		if tok != v.Tok {
+			t.Errorf("token should have been '%d', was '%d'", v.Tok, tok)
+		}
+
+		if lit != v.Data {
+			t.Errorf("value should be '%s', was '%s'", v.Data, lit)
+		}
+	}
+}
