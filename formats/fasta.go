@@ -16,18 +16,22 @@ const fastaTemplateString = `{{ range $i, $seq := . -}}
 var fastaTemplate = template.Must(template.New("fasta").Parse(fastaTemplateString))
 
 // FastaWriter writes a seriese of sequences to a fasta file
-type FastaWriter struct {
-	FileName  string
-	File      io.Writer
-	sequences []sequence.Sequence
+type Fasta struct {
+	Sequences []sequence.Sequence
 }
 
 // AddSequence to the internal list of sequences of the writer
-func (fw *FastaWriter) AddSequence(seq sequence.Sequence) {
-	fw.sequences = append(fw.sequences, seq)
+func (f *Fasta) AddSequence(seq sequence.Sequence) {
+	f.Sequences = append(f.Sequences, seq)
 }
 
 // WriteSequences writes the stored sequences to the stored file pointer
-func (fw *FastaWriter) WriteSequences() error {
-	return fastaTemplate.Execute(fw.File, fw.sequences)
+func (f *Fasta) WriteSequences(writer io.Writer) error {
+	return fastaTemplate.Execute(writer, f.Sequences)
+}
+
+// Parse will read a file, and append all new Sequences to the store
+// of sequences
+func (f *Fasta) Parse(input io.Reader) error {
+	return nil
 }

@@ -32,11 +32,9 @@ func TestWithSequenceCanWriteOneFasta(t *testing.T) {
 
 	output := &bytes.Buffer{}
 
-	fastaWriter := formats.FastaWriter{
-		FileName: "test_out.fasta",
-		File:     output}
-	fastaWriter.AddSequence(sequence)
-	fastaWriter.WriteSequences()
+	fasta := formats.Fasta{}
+	fasta.AddSequence(sequence)
+	fasta.WriteSequences(output)
 	got := output.String()
 	if got != expected {
 		t.Errorf("Did not get expected outputs for basic write fasta:\n\n\tGot:\n\n%s\n\n\tExpected:\n\n%s", got, expected)
@@ -51,15 +49,20 @@ func TestCanWriteTwoFasta(t *testing.T) {
 
 	output := &bytes.Buffer{}
 
-	fastaWriter := formats.FastaWriter{
-		FileName: "test_out.fasta",
-		File:     output}
+	fastaWriter := formats.Fasta{}
 	fastaWriter.AddSequence(sequence1)
 	fastaWriter.AddSequence(sequence2)
-	fastaWriter.WriteSequences()
+	fastaWriter.WriteSequences(output)
 	got := output.String()
 
 	if got != expected {
 		t.Errorf("Did not get expected outputs for basic write fasta:\n\n\tGot:\n\n%s\n\n\tExpected:\n\n%s", got, expected)
 	}
+}
+
+func TestCanParseNonInterleavedSingleSequence(t *testing.T) {
+	inputString := fmt.Sprintf(fastaFormat, "Oryg_luct_1033", testSequence) + "\n"
+	input := bytes.NewBuffer([]byte(inputString))
+	fastaReader := formats.Fasta{}
+	fastaReader.Parse(input)
 }
