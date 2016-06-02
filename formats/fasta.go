@@ -1,6 +1,7 @@
 package formats
 
 import (
+	"fmt"
 	"io"
 	"text/template"
 
@@ -33,5 +34,25 @@ func (f *Fasta) WriteSequences(writer io.Writer) error {
 // Parse will read a file, and append all new Sequences to the store
 // of sequences
 func (f *Fasta) Parse(input io.Reader) error {
-	return nil
+	fastaScanner := NewFastaScanner(input)
+	var newSequence sequence.Sequence
+	//var lastToken Token = UNSTARTED
+	for {
+		token, lit := fastaScanner.Scan()
+
+		switch token {
+		case SEQUENCE_ID:
+			newSequence = sequence.Sequence{Name: string(lit)}
+			//lastToken = SEQUENCE_ID
+			continue
+		case SEQUENCE_DATA:
+			newSequence.Seq = lit
+			//lastToken = SEQUENCE_DATA
+			f.Sequences = append(f.Sequences, newSequence)
+		case EOF:
+			return nil
+		case INVALID:
+			return fmt.Errorf("Invalid characters in the stream")
+		}
+	}
 }

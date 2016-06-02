@@ -9,7 +9,8 @@ import (
 )
 
 const (
-	EOF Token = iota
+	UNSTARTED Token = -1
+	EOF       Token = iota
 	SEQUENCE_ID
 	SEQUENCE_DATA
 	WHITESPACE

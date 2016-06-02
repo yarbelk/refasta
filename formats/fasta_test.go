@@ -19,7 +19,7 @@ CTGGGCACATTATATCATAACCACAACCTTCATATCAAGTAAGGTGAGGTTCTTACCCATTTAAAGTTTGAGA
 
 const (
 	fastaFormat      = ">%s\n%s\n"
-	testSequenceName = "Oryg luct 1033"
+	testSequenceName = "Oryg_luct_1033"
 )
 
 var testSequence = []byte("TACTTTAGCGGTAATGTATAGGTATACAACTTAAGCGCCATCCATTTTAAGGGCTAGTTGCTTCGGCAGGTGAGTTGTTACACACTCCTTAGCGGATTACGACTTCCATGTCCACCGTCCTGCTGTTTTAAGCAACCAACGCCTTTCATGGTATCTGCATGAGTTGTTAATTTGGGCACCGTAACATTACGTTTGGTTCATCCCACAGCGCCAGTTCTGCTTACCAAAAGTGGCCCACTGGGCACATTATATCATAACCACAACCTTCATATCAAGTAAGGTGAGGTTCTTACCCATTTAAAGTTTGAGA")
@@ -65,4 +65,19 @@ func TestCanParseNonInterleavedSingleSequence(t *testing.T) {
 	input := bytes.NewBuffer([]byte(inputString))
 	fastaReader := formats.Fasta{}
 	fastaReader.Parse(input)
+	expectedParsed := 1
+	if len(fastaReader.Sequences) != expectedParsed {
+		t.Errorf("Wrong number of sequences after parseing; expected: '%d', got '%d'", expectedParsed, len(fastaReader.Sequences))
+	}
+
+	seq := fastaReader.Sequences[0]
+	expectedName := "Oryg_luct_1033"
+
+	if seq.Name != expectedName {
+		t.Errorf("Expected name didn't match: expected '%s', got '%s'", expectedName, seq.Name)
+	}
+
+	if string(seq.Seq) != string(testSequence) {
+		t.Errorf("Expected name didn't match: expected '%s', got '%s'", string(testSequence), string(seq.Seq))
+	}
 }
