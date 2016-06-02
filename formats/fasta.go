@@ -39,6 +39,7 @@ func (f *Fasta) Parse(input io.Reader) error {
 	//var lastToken Token = UNSTARTED
 	for {
 		token, lit := fastaScanner.Scan()
+		fmt.Println(token, lit)
 
 		switch token {
 		case SEQUENCE_ID:

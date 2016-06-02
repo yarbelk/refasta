@@ -52,6 +52,21 @@ func TestFastaScanScansNucleotideData(t *testing.T) {
 	}
 }
 
+func TestFastaScanScansNucleotideDataWithDash(t *testing.T) {
+	expectedLit := "ATG-CGTA"
+	reader := bytes.NewReader([]byte(expectedLit))
+	fastaScanner := formats.NewFastaScanner(reader)
+	tok, lit := fastaScanner.Scan()
+
+	if tok != formats.SEQUENCE_DATA {
+		t.Errorf("token should have been 'formats.SEQUENCE_DATA' %d, was '%d'", formats.SEQUENCE_DATA, tok)
+	}
+
+	if string(lit) != expectedLit {
+		t.Errorf("Sequence should be '%s', was '%s'", expectedLit, lit)
+	}
+}
+
 func TestFastaScanScansNucleotideDataWithNewline(t *testing.T) {
 	reader := bytes.NewReader([]byte("ATG\nCGTA"))
 	fastaScanner := formats.NewFastaScanner(reader)

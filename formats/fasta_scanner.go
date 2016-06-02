@@ -140,5 +140,5 @@ func isWhitespace(c rune) bool {
 // Number is because Morphology data generally is 0..9, while
 // DNA/RNA/Proteins are letters.  All are valid
 func isSequenceData(c rune) bool {
-	return unicode.IsLetter(c) || unicode.IsNumber(c)
+	return unicode.IsLetter(c) || unicode.IsNumber(c) || c == '-'
 }
