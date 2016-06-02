@@ -1,12 +1,14 @@
 
 TODO
 
-- [ ] Read a Fasta file, output a fasta file
+- [x] Read a Fasta file, output a fasta file
+- [ ] Species Name and Gene Name schemas
 - [ ] Read a Fasta File, output a TNT file
+      ccode and cgroup can be ignored
 - [ ] Read a Fasta File, output a Nexus File
-- [ ] Support Interleaving of Fasta
-- [ ] Support Interleaving of TNT
+- [ ] Guess the Species from the name
 - [ ] Identify potentially missnamed species ( species names off by
       white space, special characters, or a couple characters
       by some language disntance metric
-- [ ] Guess the Species from the name
+- [ ] Support Interleaving of Fasta
+- [ ] Support Interleaving of TNT

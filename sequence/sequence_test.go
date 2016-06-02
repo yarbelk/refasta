@@ -13,3 +13,13 @@ func TestSafeName(t *testing.T) {
 		t.Errorf("Expected: '%q', got '%q'", expected, seq.SafeName())
 	}
 }
+
+func TestSafeSpace(t *testing.T) {
+	in := "Hello World!"
+	expected := "Hello_World!"
+	got := sequence.Safe(in)
+
+	if got != expected {
+		t.Errorf("got '%s', expected '%s'", got, expected)
+	}
+}
