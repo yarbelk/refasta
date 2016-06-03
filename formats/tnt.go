@@ -36,7 +36,6 @@ type taxonData struct {
 
 // Construct a species using a GMDSlice to order the gene sequences
 func (t *TNT) PrintableTaxa() []taxonData {
-	sort.Strings(t.speciesNames)
 	t.MetaData.Sort()
 	var allSpecies []taxonData = make([]taxonData, 0, len(t.speciesNames))
 
@@ -53,6 +52,19 @@ func (t *TNT) PrintableTaxa() []taxonData {
 	return allSpecies
 }
 
+// insertString into the place that would keep it uniquely and ordered ascending
+func insertString(slice []string, s string) []string {
+	i := sort.SearchStrings(slice, s)
+	// Inserstion sort of the species names: builds up the list as a sorted list
+	if i < len(slice) && slice[i] != s {
+		// Species Name not in the list; insert it at i
+		slice = append(slice[:i], append([]string{s}, slice[i:]...)...)
+	} else if i == len(slice) {
+		slice = append(slice, s)
+	}
+	return slice
+}
+
 // AddSequence to the internal sequence store.
 func (t *TNT) AddSequence(seq sequence.Sequence) {
 	if t.Sequences == nil {
@@ -62,14 +74,7 @@ func (t *TNT) AddSequence(seq sequence.Sequence) {
 		t.Sequences[seq.Gene] = make(map[string]sequence.Sequence)
 	}
 	t.Sequences[seq.Gene][seq.Species] = seq
-	i := sort.SearchStrings(t.speciesNames, seq.Species)
-	// Inserstion sort of the species names: builds up the list as a sorted list
-	if i < len(t.speciesNames) && t.speciesNames[i] != seq.Species {
-		// Species Name not in the list; insert it at i
-		t.speciesNames = append(t.speciesNames[:i], append([]string{seq.Species}, t.speciesNames[i:]...)...)
-	} else {
-		t.speciesNames = append(t.speciesNames, seq.Species)
-	}
+	t.speciesNames = insertString(t.speciesNames, seq.Species)
 }
 
 // WriteSequences will collect up the sequences, verify their validity,
@@ -85,7 +90,7 @@ func (t *TNT) WriteSequences(writer io.Writer) error {
 	context := templateContext{
 		Title:  t.Title,
 		Length: t.getTotalLength(),
-		NTaxa:  len(t.Sequences),
+		NTaxa:  len(t.speciesNames),
 		Taxa:   allSpecies,
 	}
 	return tntNonInterleavedTemplate.Execute(writer, context)

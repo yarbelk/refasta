@@ -5,73 +5,27 @@ import (
 	"bytes"
 	"fmt"
 	"regexp"
-	"sort"
 
 	"github.com/yarbelk/refasta/scanner"
-)
-
-type ErrNo int
-
-const (
-	UNKNOWN ErrNo = iota
-	MISSMATCHED_SEQUENCE_LENGTHS
 )
 
 // Sequence is the base nucleotide container, it has a Name
 // which is the full descriptive name of the sequence
 // and Seq (byte), which is the nucleotide data
 type Sequence struct {
-	Name    string
+	// Generic Identifier
+	Name string
+	// Species Name
 	Species string
-	Gene    string
-	Seq     SequenceData
-	Length  int
-}
-
-// GeneMetaData is a convience structure, which is useful for sorting and keying
-// and validating data arround sequences and genes.  Mostly useful because
-// it is a really small structure, and we can implement a bunch of methods on it
-// so we don't have to worry about the memory footprint of giant byte arrays.
-type GeneMetaData struct {
-	Gene          string
-	Length        int
-	NumberSpecies int
-}
-
-// GMDSlice is a GeneMetaData slice, which implements the sort.Interface
-type GMDSlice []GeneMetaData
-
-// Len returns the length of the underlying slice, part of the sort.Interface
-func (g GMDSlice) Len() int {
-	return len(g)
-}
-
-// Less compairs the Gene name, part of the sort.Interface
-func (g GMDSlice) Less(i, j int) bool {
-	return g[i].Gene < g[j].Gene
-}
-
-// Sort is a convienence method for sorting a GMDSlice
-func (g GMDSlice) Sort() {
-	sort.Sort(g)
-}
-
-// Swap swaps the positions of i, j; part of the sort.Interface
-func (g GMDSlice) Swap(i, j int) {
-	g[i], g[j] = g[j], g[i]
+	// Gene name
+	Gene string
+	Seq  SequenceData
+	// Length is the Logical Length of a sequence; where polymorphics are counted
+	// as a single length eg: [AG] == len 1
+	Length int
 }
 
 var safeRegex = regexp.MustCompile("( )")
-
-type InvalidSequence struct {
-	Message string
-	Details string
-	Errno   ErrNo
-}
-
-func (e InvalidSequence) Error() string {
-	return fmt.Sprintf("InvalidSequence: %s\nDetails: %s")
-}
 
 func Safe(in string) string {
 	return safeRegex.ReplaceAllLiteralString(in, "_")

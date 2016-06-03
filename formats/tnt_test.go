@@ -27,8 +27,8 @@ func TestTwoSpiecesWithSameLengthData(t *testing.T) {
 
 	expected := `'Title Here'
 9 2
-Homo_sapiens ATAGCTACG
 Homo_erectus ATAGTCACG
+Homo_sapiens ATAGCTACG
 ;`
 	got := buf.String()
 	if got != expected {
@@ -85,8 +85,8 @@ func TestTwoSpiecesWithSpecialCharacters(t *testing.T) {
 
 	expected := `'Title Here'
 8 2
-Homo_sapiens ATAGCT[AC]G
 Homo_erectus ATAGCTAC
+Homo_sapiens ATAGCT[AC]G
 ;`
 	got := buf.String()
 	if got != expected {
@@ -114,8 +114,8 @@ func TestTwoGenesTwoSpecies(t *testing.T) {
 
 	expected := `'Title Here'
 19 2
-Homo_sapiens TAGCATAGCTGATAGCTAG
 Homo_erectus TAGCATAGCTAATAGCTAC
+Homo_sapiens TAGCATAGCTGATAGCTAG
 ;`
 
 	tnt := &formats.TNT{Title: "Title Here"}
