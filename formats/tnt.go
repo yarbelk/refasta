@@ -2,6 +2,7 @@ package formats
 
 import (
 	"io"
+	"sort"
 
 	"github.com/alecthomas/template"
 	"github.com/yarbelk/refasta/sequence"
@@ -9,59 +10,124 @@ import (
 
 // TNT formatter
 type TNT struct {
-	Title     string
-	Sequences []sequence.Sequence
+	Title        string
+	Sequences    map[string]map[string]sequence.Sequence
+	MetaData     sequence.GMDSlice
+	speciesNames []string
 }
 
 const tntNonInterleavedTemplateString = `'{{ .Title }}'
 {{ .Length }} {{ .NTaxa }}
-{{ range $i, $seq := .Sequences }}{{ $seq.SafeSpecies }} {{ $seq.Seq }}
+{{ range $i, $taxon := .Taxa }}{{ $taxon.SpeciesName }} {{ $taxon.Sequence }}
 {{ end }};`
 
 var tntNonInterleavedTemplate = template.Must(template.New("TNT").Parse(tntNonInterleavedTemplateString))
 
+type templateContext struct {
+	Title         string
+	Length, NTaxa int
+	Taxa          []taxonData
+}
+
+type taxonData struct {
+	SpeciesName string
+	Sequence    sequence.SequenceData
+}
+
+// Construct a species using a GMDSlice to order the gene sequences
+func (t *TNT) PrintableTaxa() []taxonData {
+	sort.Strings(t.speciesNames)
+	t.MetaData.Sort()
+	var allSpecies []taxonData = make([]taxonData, 0, len(t.speciesNames))
+
+	for _, n := range t.speciesNames {
+		combinedSequences := make([]byte, 0, t.getTotalLength())
+		for _, gmd := range t.MetaData {
+			combinedSequences = append(combinedSequences, t.Sequences[gmd.Gene][n].Seq...)
+		}
+		allSpecies = append(allSpecies, taxonData{
+			SpeciesName: sequence.Safe(n),
+			Sequence:    combinedSequences,
+		})
+	}
+	return allSpecies
+}
+
 // AddSequence to the internal sequence store.
 func (t *TNT) AddSequence(seq sequence.Sequence) {
-	t.Sequences = append(t.Sequences, seq)
+	if t.Sequences == nil {
+		t.Sequences = make(map[string]map[string]sequence.Sequence)
+	}
+	if m, ok := t.Sequences[seq.Gene]; !ok || m == nil {
+		t.Sequences[seq.Gene] = make(map[string]sequence.Sequence)
+	}
+	t.Sequences[seq.Gene][seq.Species] = seq
+	i := sort.SearchStrings(t.speciesNames, seq.Species)
+	// Inserstion sort of the species names: builds up the list as a sorted list
+	if i < len(t.speciesNames) && t.speciesNames[i] != seq.Species {
+		// Species Name not in the list; insert it at i
+		t.speciesNames = append(t.speciesNames[:i], append([]string{seq.Species}, t.speciesNames[i:]...)...)
+	} else {
+		t.speciesNames = append(t.speciesNames, seq.Species)
+	}
 }
 
 // WriteSequences will collect up the sequences, verify their validity,
 // and output a formated TNT file to the supplied writer
 func (t *TNT) WriteSequences(writer io.Writer) error {
-	if err := t.CheckSequenceLengths(); err != nil {
+	gmd, err := t.GenerateMetaData()
+	if err != nil {
 		return err
 	}
-	context := struct {
-		Title         string
-		Length, NTaxa int
-		Sequences     []sequence.Sequence
-	}{
-		Title:     t.Title,
-		Length:    t.Sequences[0].Length,
-		NTaxa:     len(t.Sequences),
-		Sequences: t.Sequences,
+	gmd.Sort()
+	t.MetaData = gmd
+	allSpecies := t.PrintableTaxa()
+	context := templateContext{
+		Title:  t.Title,
+		Length: t.getTotalLength(),
+		NTaxa:  len(t.Sequences),
+		Taxa:   allSpecies,
 	}
 	return tntNonInterleavedTemplate.Execute(writer, context)
 }
 
-// checkSequenceLengths will make sure that the sequences for the same
+// GenerateMetaData will make sure that the sequences for the same
 // gene sequence (or whatever sequence) are all the same length.
 // Returns types of InvalidSequence with ErrNo
 // MISSMATCHED_SEQUENCE_LENGTHS if they are no correct
-func (t *TNT) CheckSequenceLengths() error {
+// If they are correct, it will return a slice of the gene meta data
+// GeneMetaData, sequence.GMDSlice
+func (t *TNT) GenerateMetaData() (sequence.GMDSlice, error) {
 	var expectedLen int
-	for i, seq := range t.Sequences {
-		if i == 0 {
-			expectedLen = seq.Length
-			continue
-		}
-		if seq.Length != expectedLen {
-			return sequence.InvalidSequence{
-				Message: "Sequences are not the Same length",
-				Details: "None so far",
-				Errno:   sequence.MISSMATCHED_SEQUENCE_LENGTHS,
+	geneMetaData := make(sequence.GMDSlice, 0, len(t.Sequences))
+
+	for gene, _ := range t.Sequences {
+		for i, name := range t.speciesNames {
+			seq := t.Sequences[gene][name]
+			if i == 0 {
+				expectedLen = seq.Length
+			} else if seq.Length != expectedLen {
+				return nil, sequence.InvalidSequence{
+					Message: "Sequences are not the Same length",
+					Details: "None so far",
+					Errno:   sequence.MISSMATCHED_SEQUENCE_LENGTHS,
+				}
 			}
 		}
+		geneMetaData = append(geneMetaData, sequence.GeneMetaData{
+			Gene:          gene,
+			Length:        expectedLen,
+			NumberSpecies: len(t.Sequences[gene]),
+		})
 	}
-	return nil
+	return geneMetaData, nil
+}
+
+// getTotalLength will return the combined length of all genes.  This should
+// be the same for each species.
+func (t *TNT) getTotalLength() (length int) {
+	for _, gmd := range t.MetaData {
+		length = length + gmd.Length
+	}
+	return
 }

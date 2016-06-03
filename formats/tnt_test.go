@@ -36,7 +36,7 @@ Homo_erectus ATAGTCACG
 	}
 }
 
-func TestTwoSpiecesWithDifferingLengthData(t *testing.T) {
+func TestTwoSpiecesWithDifferingLengthDataHasError(t *testing.T) {
 	sequence1 := sequence.NewSequence("Homo sapiens", []byte("ATAGCTACG"))
 	sequence1.Species = "Homo sapiens"
 	sequence1.Gene = "ATP8"
@@ -49,16 +49,20 @@ func TestTwoSpiecesWithDifferingLengthData(t *testing.T) {
 	tnt.AddSequence(sequence1)
 	tnt.AddSequence(sequence2)
 
-	err := tnt.CheckSequenceLengths()
+	_, err := tnt.GenerateMetaData()
 
 	if err == nil {
 		t.Errorf("Expected tnt.WriteSequence to fail with a differing length issue")
 	}
 
-	is := err.(sequence.InvalidSequence)
-	if is.Errno != sequence.MISSMATCHED_SEQUENCE_LENGTHS {
-		t.Errorf("Expected is to be a 'MISSMATCHED_SEQUENCE_LENGTHS' (%d), was '%d'",
-			sequence.MISSMATCHED_SEQUENCE_LENGTHS, is.Errno)
+	switch is := err.(type) {
+	case sequence.InvalidSequence:
+		if is.Errno != sequence.MISSMATCHED_SEQUENCE_LENGTHS {
+			t.Errorf("Expected is to be a 'MISSMATCHED_SEQUENCE_LENGTHS' (%d), was '%d'",
+				sequence.MISSMATCHED_SEQUENCE_LENGTHS, is.Errno)
+		}
+	default:
+		t.Errorf("Error type was wrong %g", is)
 	}
 }
 
@@ -88,4 +92,49 @@ Homo_erectus ATAGCTAC
 	if got != expected {
 		t.Errorf("Expected:\n\n\"%s\"\n\nGot:\n\n\"%s\"", expected, got)
 	}
+}
+
+// TestTwoGenesTwoSpecies should sort the blocks by alphabetical order
+func TestTwoGenesTwoSpecies(t *testing.T) {
+	sequence1 := sequence.NewSequence("Homo sapiens", []byte("ATAGCTAG"))
+	sequence1.Species = "Homo sapiens"
+	sequence1.Gene = "ATP8"
+
+	sequence2 := sequence.NewSequence("Homo erectus", []byte("ATAGCTAC"))
+	sequence2.Species = "Homo erectus"
+	sequence2.Gene = "ATP8"
+
+	sequence3 := sequence.NewSequence("Homo sapiens", []byte("TAGCATAGCTG"))
+	sequence3.Species = "Homo sapiens"
+	sequence3.Gene = "ATP6"
+
+	sequence4 := sequence.NewSequence("Homo erectus", []byte("TAGCATAGCTA"))
+	sequence4.Species = "Homo erectus"
+	sequence4.Gene = "ATP6"
+
+	expected := `'Title Here'
+19 2
+Homo_sapiens TAGCATAGCTGATAGCTAG
+Homo_erectus TAGCATAGCTAATAGCTAC
+;`
+
+	tnt := &formats.TNT{Title: "Title Here"}
+	tnt.AddSequence(sequence1)
+	tnt.AddSequence(sequence2)
+	tnt.AddSequence(sequence3)
+	tnt.AddSequence(sequence4)
+
+	buf := bytes.Buffer{}
+
+	err := tnt.WriteSequences(&buf)
+
+	if err != nil {
+		t.Error("Expected no error, got one", err)
+	}
+
+	got := buf.String()
+	if got != expected {
+		t.Errorf("Expected:\n\n\"%s\"\n\nGot:\n\n\"%s\"", expected, got)
+	}
+
 }
