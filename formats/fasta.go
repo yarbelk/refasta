@@ -35,10 +35,10 @@ func (f *Fasta) WriteSequences(writer io.Writer) error {
 // of sequences
 func (f *Fasta) Parse(input io.Reader) error {
 	fastaScanner := NewFastaScanner(input)
-	var newSequence sequence.Sequence
+	var newSequence sequence.Sequence = sequence.NewSequence("", []byte{})
 	//var lastToken Token = UNSTARTED
 	for {
-		token, lit := fastaScanner.Scan()
+		token, lit, length := fastaScanner.Scan()
 
 		switch token {
 		case SEQUENCE_ID:
@@ -47,6 +47,7 @@ func (f *Fasta) Parse(input io.Reader) error {
 			continue
 		case SEQUENCE_DATA:
 			newSequence.Seq = lit
+			newSequence.Length = length
 			//lastToken = SEQUENCE_DATA
 			f.Sequences = append(f.Sequences, newSequence)
 		case EOF:
