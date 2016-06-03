@@ -23,3 +23,19 @@ func TestSafeSpace(t *testing.T) {
 		t.Errorf("got '%s', expected '%s'", got, expected)
 	}
 }
+
+func TestNewSequenceCountsLength(t *testing.T) {
+	seq := sequence.NewSequence("test", []byte("ATAGATAG"))
+	expected := 8
+	if seq.Length != expected {
+		t.Errorf("sequence has wrong length, expected '%d', got '%d'", expected, seq.Length)
+	}
+}
+
+func TestNewSequenceCountsLengthWithBrackets(t *testing.T) {
+	seq := sequence.NewSequence("test", []byte("ATAGAT[AG]"))
+	expected := 7
+	if seq.Length != expected {
+		t.Errorf("sequence has wrong length, expected '%d', got '%d'", expected, seq.Length)
+	}
+}

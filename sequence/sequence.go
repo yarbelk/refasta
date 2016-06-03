@@ -1,8 +1,12 @@
 package sequence
 
 import (
+	"bufio"
+	"bytes"
 	"fmt"
 	"regexp"
+
+	"github.com/yarbelk/refasta/scanner"
 )
 
 // Sequence is the base nucleotide container, it has a Name
@@ -26,9 +30,12 @@ func Safe(in string) string {
 // methods on there for easy handling
 type sequenceData []byte
 
-// NewSequence returns a value type Sequence
+// NewSequence returns a value type Sequence, this will scan the sequence data
+// to determin its length; so only use this is you haven't already done something
+// to get the length of the data.
 func NewSequence(name string, seq []byte) Sequence {
-	return Sequence{Name: name, Seq: sequenceData(seq), Length: 0}
+	_, length, _ := scanner.ScanSequenceData(bufio.NewReader(bytes.NewBuffer(seq)))
+	return Sequence{Name: name, Seq: sequenceData(seq), Length: length}
 }
 
 // String represesntiation of a Seq is just typecasting to a `string`
