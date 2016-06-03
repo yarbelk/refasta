@@ -9,6 +9,13 @@ import (
 	"github.com/yarbelk/refasta/scanner"
 )
 
+type ErrNo int
+
+const (
+	UNKNOWN ErrNo = iota
+	MISSMATCHED_SEQUENCE_LENGTHS
+)
+
 // Sequence is the base nucleotide container, it has a Name
 // which is the full descriptive name of the sequence
 // and Seq (byte), which is the nucleotide data
@@ -21,6 +28,16 @@ type Sequence struct {
 }
 
 var safeRegex = regexp.MustCompile("( )")
+
+type InvalidSequence struct {
+	Message string
+	Details string
+	Errno   ErrNo
+}
+
+func (e InvalidSequence) Error() string {
+	return fmt.Sprintf("InvalidSequence: %s\nDetails: %s")
+}
 
 func Safe(in string) string {
 	return safeRegex.ReplaceAllLiteralString(in, "_")

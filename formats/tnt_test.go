@@ -9,16 +9,13 @@ import (
 )
 
 func TestTwoSpiecesWithSameLengthData(t *testing.T) {
-	sequence1 := sequence.Sequence{
-		Species: "Homo sapiens",
-		Gene:    "ATP8",
-		Seq:     []byte("ATAGCTACG"),
-	}
-	sequence2 := sequence.Sequence{
-		Species: "Homo erectus",
-		Gene:    "ATP8",
-		Seq:     []byte("ATAGTCACG"),
-	}
+	sequence1 := sequence.NewSequence("Homo sapiens", []byte("ATAGCTACG"))
+	sequence1.Species = "Homo sapiens"
+	sequence1.Gene = "ATP8"
+
+	sequence2 := sequence.NewSequence("Homo erectus", []byte("ATAGTCACG"))
+	sequence2.Species = "Homo erectus"
+	sequence2.Gene = "ATP8"
 
 	tnt := &formats.TNT{Title: "Title Here"}
 	tnt.AddSequence(sequence1)
@@ -32,6 +29,60 @@ func TestTwoSpiecesWithSameLengthData(t *testing.T) {
 9 2
 Homo_sapiens ATAGCTACG
 Homo_erectus ATAGTCACG
+;`
+	got := buf.String()
+	if got != expected {
+		t.Errorf("Expected:\n\n\"%s\"\n\nGot:\n\n\"%s\"", expected, got)
+	}
+}
+
+func TestTwoSpiecesWithDifferingLengthData(t *testing.T) {
+	sequence1 := sequence.NewSequence("Homo sapiens", []byte("ATAGCTACG"))
+	sequence1.Species = "Homo sapiens"
+	sequence1.Gene = "ATP8"
+
+	sequence2 := sequence.NewSequence("Homo erectus", []byte("ATAGCTAC"))
+	sequence2.Species = "Homo erectus"
+	sequence2.Gene = "ATP8"
+
+	tnt := &formats.TNT{Title: "Title Here"}
+	tnt.AddSequence(sequence1)
+	tnt.AddSequence(sequence2)
+
+	err := tnt.CheckSequenceLengths()
+
+	if err == nil {
+		t.Errorf("Expected tnt.WriteSequence to fail with a differing length issue")
+	}
+
+	is := err.(sequence.InvalidSequence)
+	if is.Errno != sequence.MISSMATCHED_SEQUENCE_LENGTHS {
+		t.Errorf("Expected is to be a 'MISSMATCHED_SEQUENCE_LENGTHS' (%d), was '%d'",
+			sequence.MISSMATCHED_SEQUENCE_LENGTHS, is.Errno)
+	}
+}
+
+func TestTwoSpiecesWithSpecialCharacters(t *testing.T) {
+	sequence1 := sequence.NewSequence("Homo sapiens", []byte("ATAGCT[AC]G"))
+	sequence1.Species = "Homo sapiens"
+	sequence1.Gene = "ATP8"
+
+	sequence2 := sequence.NewSequence("Homo erectus", []byte("ATAGCTAC"))
+	sequence2.Species = "Homo erectus"
+	sequence2.Gene = "ATP8"
+
+	tnt := &formats.TNT{Title: "Title Here"}
+	tnt.AddSequence(sequence1)
+	tnt.AddSequence(sequence2)
+
+	buf := bytes.Buffer{}
+
+	tnt.WriteSequences(&buf)
+
+	expected := `'Title Here'
+8 2
+Homo_sapiens ATAGCT[AC]G
+Homo_erectus ATAGCTAC
 ;`
 	got := buf.String()
 	if got != expected {
