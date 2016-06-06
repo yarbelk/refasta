@@ -101,6 +101,25 @@ func TestGetGeneNameFromFileName(t *testing.T) {
 	}
 }
 
+func TestSetSpeciesNameFromSequenceID(t *testing.T) {
+	inputString := fmt.Sprintf(fastaFormat, testSequenceName, testSequence) + "\n"
+	input := bytes.NewBuffer([]byte(inputString))
+	fastaReader := formats.Fasta{SpeciesFromID: true}
+
+	fastaReader.Parse(input, testGeneName)
+	expectedParsed := 1
+
+	if len(fastaReader.Sequences) != expectedParsed {
+		t.Errorf("Wrong number of sequences after parseing; expected: '%d', got '%d'", expectedParsed, len(fastaReader.Sequences))
+	}
+
+	seq := fastaReader.Sequences[0]
+	if seq.Species != testSequenceName {
+		t.Errorf("Species name was not set correctly; expected '%s' name, was '%s'", testSequenceName, seq.Species)
+	}
+
+}
+
 func TestDataBeforeIDReturnsError(t *testing.T) {
 	inputString := "ATAG\n>shouldFail"
 	input := bytes.NewBuffer([]byte(inputString))

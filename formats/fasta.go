@@ -18,7 +18,8 @@ var fastaTemplate = template.Must(template.New("fasta").Parse(fastaTemplateStrin
 
 // FastaWriter writes a seriese of sequences to a fasta file
 type Fasta struct {
-	Sequences []sequence.Sequence
+	Sequences     []sequence.Sequence
+	SpeciesFromID bool
 }
 
 // AddSequence to the internal list of sequences of the writer
@@ -54,6 +55,9 @@ func (f *Fasta) Parse(input io.Reader, geneName ...string) error {
 				}
 			}
 			newSequence = sequence.Sequence{Name: string(lit), Gene: gene}
+			if f.SpeciesFromID {
+				newSequence.Species = string(lit)
+			}
 			lastToken = SEQUENCE_ID
 			continue
 		case SEQUENCE_DATA:

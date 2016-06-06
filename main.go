@@ -65,5 +65,4 @@ func main() {
 	}
 	fmt.Println(fasta.Sequences)
 	fasta.WriteSequences(outputFP)
-
 }
