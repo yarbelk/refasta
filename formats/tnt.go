@@ -48,7 +48,11 @@ type taxonData struct {
 
 const TNT_FORMAT = "tnt"
 
-// Construct a species using a GMDSlice to order the gene sequences
+/*
+Construct a species using a GMDSlice to order the gene sequences.
+If there is a defined outgroup, then sort that to the front of the
+printable list
+*/
 func (t *TNT) PrintableTaxa() []taxonData {
 	if t.MetaData == nil {
 		t.GenerateMetaData()
