@@ -25,7 +25,8 @@ func TestTwoSpiecesWithSameLengthData(t *testing.T) {
 
 	tnt.WriteSequences(&buf)
 
-	expected := `'Title Here'
+	expected := `xread
+'Title Here'
 9 2
 Homo_erectus ATAGTCACG
 Homo_sapiens ATAGCTACG
@@ -83,7 +84,8 @@ func TestTwoSpiecesWithSpecialCharacters(t *testing.T) {
 
 	tnt.WriteSequences(&buf)
 
-	expected := `'Title Here'
+	expected := `xread
+'Title Here'
 8 2
 Homo_erectus ATAGCTAC
 Homo_sapiens ATAGCT[AC]G
@@ -112,7 +114,8 @@ func TestTwoGenesTwoSpecies(t *testing.T) {
 	sequence4.Species = "Homo erectus"
 	sequence4.Gene = "ATP6"
 
-	expected := `'Title Here'
+	expected := `xread
+'Title Here'
 19 2
 Homo_erectus TAGCATAGCTAATAGCTAC
 Homo_sapiens TAGCATAGCTGATAGCTAG

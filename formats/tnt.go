@@ -16,7 +16,8 @@ type TNT struct {
 	speciesNames []string
 }
 
-const tntNonInterleavedTemplateString = `'{{ .Title }}'
+const tntNonInterleavedTemplateString = `xread
+'{{ .Title }}'
 {{ .Length }} {{ .NTaxa }}
 {{ range $i, $taxon := .Taxa }}{{ $taxon.SpeciesName }} {{ $taxon.Sequence }}
 {{ end }};`
