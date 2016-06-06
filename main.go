@@ -104,31 +104,35 @@ func handleFastaInput(input string) ([]sequence.Sequence, error) {
 	} else {
 		files = []string{input}
 	}
-	fmt.Println("files", files)
 
 	for _, file := range files {
 		ext := path.Ext(file)
 		geneName := file[:len(file)-len(ext)]
-		fasta := formats.Fasta{SpeciesFromID: true}
-		fd, err := os.Open(file)
+		err := func() error {
+			fasta := formats.Fasta{SpeciesFromID: true}
+			fd, err := os.Open(file)
+			if err != nil {
+				// probably an Access Control issue, or race condition
+				return err
+			}
+			defer fd.Close()
+			err = fasta.Parse(fd, geneName)
+			if err != nil {
+				// Some parsing error...
+				return err
+			}
+			sequences = append(sequences, fasta.Sequences...)
+			return nil
+		}()
 		if err != nil {
-			// probably an Access Control issue, or race condition
 			return nil, err
 		}
-		defer fd.Close()
-		err = fasta.Parse(fd, geneName)
-		if err != nil {
-			// Some parsing error...
-			return nil, err
-		}
-		sequences = append(sequences, fasta.Sequences...)
 	}
 	return sequences, nil
 }
 
 func handleFastaOutput(sequences []sequence.Sequence, output string) error {
 	fasta := formats.Fasta{}
-	fmt.Println(sequences)
 	fasta.AddSequence(sequences...)
 	fd, err := os.Create(output)
 	if err != nil {
@@ -140,7 +144,6 @@ func handleFastaOutput(sequences []sequence.Sequence, output string) error {
 
 func handleTNTOutput(context TNTContext, sequences []sequence.Sequence, output string) error {
 	tnt := formats.TNT{Title: context.Title}
-	fmt.Println(sequences)
 	tnt.AddSequence(sequences...)
 	tnt.SetOutgroup(context.Outgroup)
 	fd, err := os.Create(output)
