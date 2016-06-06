@@ -167,6 +167,9 @@ func (t *TNT) WriteSequences(writer io.Writer) error {
 	if err := t.WriteXRead(writer); err != nil {
 		return err
 	}
+	if err := t.WriteBlocks(writer); err != nil {
+		return err
+	}
 
 	return nil
 }
