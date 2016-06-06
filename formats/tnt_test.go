@@ -18,8 +18,7 @@ func TestTwoSpiecesWithSameLengthData(t *testing.T) {
 	sequence2.Gene = "ATP8"
 
 	tnt := &formats.TNT{Title: "Title Here"}
-	tnt.AddSequence(sequence1)
-	tnt.AddSequence(sequence2)
+	tnt.AddSequence(sequence1, sequence2)
 
 	buf := bytes.Buffer{}
 
@@ -47,8 +46,7 @@ func TestTwoSpiecesWithDifferingLengthDataHasError(t *testing.T) {
 	sequence2.Gene = "ATP8"
 
 	tnt := &formats.TNT{Title: "Title Here"}
-	tnt.AddSequence(sequence1)
-	tnt.AddSequence(sequence2)
+	tnt.AddSequence(sequence1, sequence2)
 
 	_, err := tnt.GenerateMetaData()
 
@@ -77,8 +75,7 @@ func TestTwoSpiecesWithSpecialCharacters(t *testing.T) {
 	sequence2.Gene = "ATP8"
 
 	tnt := &formats.TNT{Title: "Title Here"}
-	tnt.AddSequence(sequence1)
-	tnt.AddSequence(sequence2)
+	tnt.AddSequence(sequence1, sequence2)
 
 	buf := bytes.Buffer{}
 
@@ -122,10 +119,7 @@ Homo_sapiens TAGCATAGCTGATAGCTAG
 ;`
 
 	tnt := &formats.TNT{Title: "Title Here"}
-	tnt.AddSequence(sequence1)
-	tnt.AddSequence(sequence2)
-	tnt.AddSequence(sequence3)
-	tnt.AddSequence(sequence4)
+	tnt.AddSequence(sequence1, sequence2, sequence3, sequence4)
 
 	buf := bytes.Buffer{}
 

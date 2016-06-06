@@ -68,16 +68,18 @@ func insertString(slice []string, s string) []string {
 	return slice
 }
 
-// AddSequence to the internal sequence store.
-func (t *TNT) AddSequence(seq sequence.Sequence) {
-	if t.Sequences == nil {
-		t.Sequences = make(map[string]map[string]sequence.Sequence)
+// AddSequence (or multiple) to the internal sequence store.
+func (t *TNT) AddSequence(seqs ...sequence.Sequence) {
+	for _, seq := range seqs {
+		if t.Sequences == nil {
+			t.Sequences = make(map[string]map[string]sequence.Sequence)
+		}
+		if m, ok := t.Sequences[seq.Gene]; !ok || m == nil {
+			t.Sequences[seq.Gene] = make(map[string]sequence.Sequence)
+		}
+		t.Sequences[seq.Gene][seq.Species] = seq
+		t.speciesNames = insertString(t.speciesNames, seq.Species)
 	}
-	if m, ok := t.Sequences[seq.Gene]; !ok || m == nil {
-		t.Sequences[seq.Gene] = make(map[string]sequence.Sequence)
-	}
-	t.Sequences[seq.Gene][seq.Species] = seq
-	t.speciesNames = insertString(t.speciesNames, seq.Species)
 }
 
 // WriteSequences will collect up the sequences, verify their validity,
