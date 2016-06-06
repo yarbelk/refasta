@@ -14,6 +14,8 @@ const fastaTemplateString = `{{ range $i, $seq := . -}}
 {{ end }}
 `
 
+const FASTA_FORMAT = "fasta"
+
 var fastaTemplate = template.Must(template.New("fasta").Parse(fastaTemplateString))
 
 // FastaWriter writes a seriese of sequences to a fasta file
@@ -22,9 +24,9 @@ type Fasta struct {
 	SpeciesFromID bool
 }
 
-// AddSequence to the internal list of sequences of the writer
-func (f *Fasta) AddSequence(seq sequence.Sequence) {
-	f.Sequences = append(f.Sequences, seq)
+// AddSequence (or many) to the internal list of sequences of the writer
+func (f *Fasta) AddSequence(seqs ...sequence.Sequence) {
+	f.Sequences = append(f.Sequences, seqs...)
 }
 
 // WriteSequences writes the stored sequences to the stored file pointer

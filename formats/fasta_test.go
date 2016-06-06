@@ -51,8 +51,7 @@ func TestCanWriteTwoFasta(t *testing.T) {
 	output := &bytes.Buffer{}
 
 	fastaWriter := formats.Fasta{}
-	fastaWriter.AddSequence(sequence1)
-	fastaWriter.AddSequence(sequence2)
+	fastaWriter.AddSequence(sequence1, sequence2)
 	fastaWriter.WriteSequences(output)
 	got := output.String()
 

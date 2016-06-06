@@ -35,6 +35,8 @@ type taxonData struct {
 	Sequence    sequence.SequenceData
 }
 
+const TNT_FORMAT = "tnt"
+
 // Construct a species using a GMDSlice to order the gene sequences
 func (t *TNT) PrintableTaxa() []taxonData {
 	t.MetaData.Sort()

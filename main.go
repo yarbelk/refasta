@@ -3,10 +3,14 @@ package main
 import (
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
+	"path"
+	"path/filepath"
 
 	flag "github.com/ogier/pflag"
 	"github.com/yarbelk/refasta/formats"
+	"github.com/yarbelk/refasta/sequence"
 )
 
 type FakeReadCloser struct {
@@ -39,30 +43,140 @@ func getInputFilePointer(filename string) (io.ReadCloser, error) {
 	return os.Open(filename)
 }
 
+func IsDirectory(path string) (bool, error) {
+	fileInfo, err := os.Stat(path)
+	return fileInfo.IsDir(), err
+}
+
+func isFormat(file, format string) bool {
+	switch path.Ext(file) {
+	case ".fas", ".fasta":
+		return format == formats.FASTA_FORMAT
+	default:
+		return false
+	}
+}
+
+func dirInput(dir, format string, recurse bool) ([]string, error) {
+	absDir, err := filepath.Abs(dir)
+	if err != nil {
+		return nil, err
+	}
+	files, err := ioutil.ReadDir(absDir)
+	if err != nil {
+		return nil, err
+	}
+	filteredFiles := make([]string, 0, 10)
+	for _, file := range files {
+		if file.IsDir() && recurse {
+			f, err := dirInput(filepath.Join(absDir, file.Name()), format, true)
+			if err != nil {
+				return nil, err
+			}
+			filteredFiles = append(filteredFiles, f...)
+		} else if isFormat(file.Name(), format) {
+			filteredFiles = append(filteredFiles, filepath.Join(absDir, file.Name()))
+		}
+	}
+	return filteredFiles, nil
+}
+
+func isDirectory(path string) (bool, error) {
+	fileInfo, err := os.Stat(path)
+	return fileInfo.IsDir(), err
+}
+
+func handleFastaInput(input string) ([]sequence.Sequence, error) {
+	var files []string
+	var sequences []sequence.Sequence
+
+	if isDir, err := isDirectory(input); isDir && err == nil {
+		files, err = dirInput(input, formats.FASTA_FORMAT, true)
+		if err != nil {
+			// Some error in walking the directory tree
+			return nil, err
+		}
+	} else {
+		files = []string{input}
+	}
+	fmt.Println("files", files)
+
+	for _, file := range files {
+		ext := path.Ext(file)
+		geneName := file[:len(file)-len(ext)]
+		fasta := formats.Fasta{SpeciesFromID: true}
+		fd, err := os.Open(file)
+		if err != nil {
+			// probably an Access Control issue, or race condition
+			return nil, err
+		}
+		defer fd.Close()
+		err = fasta.Parse(fd, geneName)
+		if err != nil {
+			// Some parsing error...
+			return nil, err
+		}
+		sequences = append(sequences, fasta.Sequences...)
+	}
+	return sequences, nil
+}
+
+func handleFastaOutput(sequences []sequence.Sequence, output string) error {
+	fasta := formats.Fasta{}
+	fmt.Println(sequences)
+	fasta.AddSequence(sequences...)
+	fd, err := os.Create(output)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Issue opening output file;\n%s", err.Error())
+	}
+	defer fd.Close()
+	return fasta.WriteSequences(fd)
+}
+
+func handleTNTOutput(sequences []sequence.Sequence, output string) error {
+	return nil
+}
+
 func main() {
+	inputFormat := flag.StringP("input-format", "f", formats.FASTA_FORMAT, "intput format, must be 'fasta'")
+	outputFormat := flag.StringP("outpu-format", "F", formats.TNT_FORMAT, "output format, must be [fasta|tnt]")
 	input := flag.StringP("input-file", "i", "--", "input file, it must be a valid input, or '--', or blank.  if blank. or '--', will read from stdin")
 	output := flag.StringP("output-file", "o", "--", "output file, it must be a valid input, or '--', or blank.  if blank. or '--', will write to stdout")
-
 	flag.Parse()
 
-	fmt.Println("here we go")
-	inputFP, err := getInputFilePointer(*input)
-	defer inputFP.Close()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Input file was not valid", err)
-	}
-	outputFP, err := getOutputFilePointer(*output)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Output file was not valid", err)
-	}
-	defer outputFP.Close()
+	var sequences []sequence.Sequence
+	var err error
 
-	fasta := formats.Fasta{}
-	err = fasta.Parse(inputFP)
-	if err != nil {
-		fmt.Println(err)
+	switch *inputFormat {
+	case formats.FASTA_FORMAT:
+		fmt.Fprintf(os.Stderr, "intput format is fasta; parsing\n")
+		sequences, err = handleFastaInput(*input)
+	default:
+		fmt.Fprintf(os.Stderr, "Unknown intput format '%s'", inputFormat)
 		os.Exit(1)
 	}
-	fmt.Println(fasta.Sequences)
-	fasta.WriteSequences(outputFP)
+
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s\n", err.Error())
+		os.Exit(1)
+	}
+
+	switch *outputFormat {
+	case formats.FASTA_FORMAT:
+		fmt.Fprintf(os.Stderr, "Output format is fasta; serializing\n")
+		if err := handleFastaOutput(sequences, *output); err != nil {
+			fmt.Fprintf(os.Stderr, "%s\n", err.Error())
+			os.Exit(1)
+		}
+	case formats.TNT_FORMAT:
+		fmt.Fprintf(os.Stderr, "Output format is TNT; serializing\n")
+		if err := handleTNTOutput(sequences, *output); err != nil {
+			fmt.Fprintf(os.Stderr, "%s\n", err.Error())
+			os.Exit(1)
+		}
+	default:
+		fmt.Fprintf(os.Stderr, "Unknown output format '%s'", inputFormat)
+		os.Exit(1)
+	}
+
 }
