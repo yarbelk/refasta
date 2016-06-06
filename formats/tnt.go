@@ -1,8 +1,11 @@
 package formats
 
 import (
+	"fmt"
 	"io"
 	"sort"
+	"strconv"
+	"strings"
 
 	"github.com/alecthomas/template"
 	"github.com/yarbelk/refasta/sequence"
@@ -22,7 +25,14 @@ const tntNonInterleavedTemplateString = `xread
 {{ range $i, $taxon := .Taxa }}{{ $taxon.SpeciesName }} {{ $taxon.Sequence }}
 {{ end }};`
 
-var tntNonInterleavedTemplate = template.Must(template.New("TNT").Parse(tntNonInterleavedTemplateString))
+const tntBlocksTemplateString = `
+blocks {{ .Blocks }};
+cnames
+{{ range $i, $cname := .Cnames}}{{ $cname }}
+{{ end }};`
+
+var tntNonInterleavedTemplate = template.Must(template.New("TNTXread").Parse(tntNonInterleavedTemplateString))
+var tntBlocksTemplate = template.Must(template.New("TNTBlocks").Parse(tntBlocksTemplateString))
 
 type templateContext struct {
 	Title         string
@@ -101,6 +111,46 @@ func (t *TNT) WriteXRead(writer io.Writer) error {
 		Taxa:   allSpecies,
 	}
 	return tntNonInterleavedTemplate.Execute(writer, context)
+}
+
+/*
+WriteBlocks writes out the block definitions and their names.
+
+	blocks 0 10 18 200;
+	cnames
+	[1 ATP8;
+	[2 ATP6;
+	[3 co1;
+	[4 dblsex;
+	;
+
+There is an implicit block `[0 "ALL"`, which cannot be renamed,
+so the first user defined block is `1`.
+*/
+
+func (t *TNT) WriteBlocks(writer io.Writer) error {
+	var startPos []string = make([]string, 0, len(t.MetaData))
+	var cnames []string = make([]string, 0, len(t.MetaData))
+
+	var newStart int
+	for i, _ := range t.MetaData {
+		if i != 0 {
+			newStart = newStart + t.MetaData[i-1].Length
+		}
+		cname := fmt.Sprintf("[%d %s;", i+1, t.MetaData[i].Gene)
+
+		cnames = append(cnames, cname)
+		startPos = append(startPos, strconv.Itoa(newStart))
+	}
+	blocks := strings.Join(startPos, " ")
+	context := struct {
+		Blocks string
+		Cnames []string
+	}{
+		Blocks: blocks,
+		Cnames: cnames,
+	}
+	return tntBlocksTemplate.Execute(writer, context)
 }
 
 // WriteSequences will collect up the sequences, verify their validity,
