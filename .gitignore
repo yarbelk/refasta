@@ -26,3 +26,6 @@ _testmain.go
 *.fas
 *.fasta
 *.tnt
+
+// bin
+refasta
