@@ -33,22 +33,40 @@ func (f *Fasta) WriteSequences(writer io.Writer) error {
 
 // Parse will read a file, and append all new Sequences to the store
 // of sequences
-func (f *Fasta) Parse(input io.Reader) error {
+func (f *Fasta) Parse(input io.Reader, geneName ...string) error {
+	var gene string
+	if len(geneName) == 1 {
+		gene = geneName[0]
+	}
 	fastaScanner := NewFastaScanner(input)
 	var newSequence sequence.Sequence = sequence.NewSequence("", []byte{})
-	//var lastToken Token = UNSTARTED
+	var lastToken Token = UNSTARTED
 	for {
 		token, lit, length := fastaScanner.Scan()
 
 		switch token {
 		case SEQUENCE_ID:
-			newSequence = sequence.Sequence{Name: string(lit)}
-			//lastToken = SEQUENCE_ID
+			if lastToken == SEQUENCE_ID {
+				return sequence.FormatError{
+					Message: "Badly formated FASTA file",
+					Details: "Two sequence id ('>....', without any data in between",
+					Errno:   sequence.BAD_FORMAT,
+				}
+			}
+			newSequence = sequence.Sequence{Name: string(lit), Gene: gene}
+			lastToken = SEQUENCE_ID
 			continue
 		case SEQUENCE_DATA:
+			if lastToken != SEQUENCE_ID {
+				return sequence.FormatError{
+					Message: "Badly formated FASTA file",
+					Details: "Sequence data did not have a Sequence ID",
+					Errno:   sequence.BAD_FORMAT,
+				}
+			}
 			newSequence.Seq = lit
 			newSequence.Length = length
-			//lastToken = SEQUENCE_DATA
+			lastToken = SEQUENCE_DATA
 			f.Sequences = append(f.Sequences, newSequence)
 		case EOF:
 			return nil
