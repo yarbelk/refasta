@@ -46,6 +46,7 @@ const (
 	UNSUPPORTED_TYPE SequenceType = iota
 	DNA_TYPE
 	PROTEIN_TYPE
+	BLANK_TYPE
 )
 
 const (
@@ -103,18 +104,38 @@ func (s *Sequence) SetAlphabet(alpha map[rune]bool) {
 // it will log a warning if there are a small number of amino acids
 // I don't particularly like making this a method, but its the easiest
 // way to output a warning
+//
+// Returns TRUE if positivily a protein
 func (s *Sequence) isProtein(alphabet map[rune]bool) bool {
 	var c int
 	for _, a := range PROTEIN_ALPHABET {
-		if alphabet[a] {
+		switch {
+		case alphabet[a]:
 			c++
+		case a == 'X':
+			c++
+		case a == '-':
+		case a == '?':
+		default:
+			continue
 		}
 	}
+
 	protein := c > 5 // completly arbitrary: 5 > len(DNA_ALPHABET)
 	if protein && c < len(PROTEIN_ALPHABET) {
 		fmt.Fprintf(os.Stderr, "%s only has %d Amino Acids, please check your data set\n", s.GoString(), c)
 	}
 	return protein
+}
+
+// isBlank checks to see if its a blank type
+func (s *Sequence) isBlank(alphabet map[rune]bool) bool {
+	for _, c := range s.Seq {
+		if c != '-' {
+			return false
+		}
+	}
+	return true
 }
 
 // isDNA checks to see if a sequence is DNA
@@ -136,8 +157,11 @@ func (s *Sequence) isDNA(alphabet map[rune]bool) bool {
 }
 
 // Type of sequence, DNA, Protein, or Unsupported
+// TODO: This should be pulled into a single loop!
 func (s *Sequence) Type() SequenceType {
 	switch {
+	case s.isBlank(s.alphabet):
+		return BLANK_TYPE
 	case s.isProtein(s.alphabet):
 		return PROTEIN_TYPE
 	case s.isDNA(s.alphabet):
@@ -146,5 +170,4 @@ func (s *Sequence) Type() SequenceType {
 		fmt.Fprintf(os.Stderr, "Couldn't determine sequence type, %s\n", s.GoString())
 		return UNSUPPORTED_TYPE
 	}
-
 }

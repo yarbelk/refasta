@@ -108,3 +108,7 @@ func TestCanSetOutgroup(t *testing.T) {
 		t.Errorf("Outgroup '%s' not sorted to the top of the xread: '%g'", taxa, outgroup)
 	}
 }
+
+func TestBlankSequenceDoesNotChangeType(t *testing.T) {
+	t.Errorf("Not tested yet")
+}

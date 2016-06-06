@@ -151,6 +151,9 @@ top:
 				first = false
 				seqType = seq.Type()
 			}
+			if seq.Type() == sequence.BLANK_TYPE {
+				continue
+			}
 			if seq.Type() != seqType || seq.Type() == sequence.UNSUPPORTED_TYPE {
 				seqType = sequence.UNSUPPORTED_TYPE
 				break top
