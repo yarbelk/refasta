@@ -40,7 +40,74 @@ Homo_sapiens ATAGCTACG
 	}
 }
 
-func TestTwoSpiecesWithDifferingLengthDataHasError(t *testing.T) {
+func TestCleanDataWorksWithTwoSpeciesWithOneMissingData(t *testing.T) {
+	sequence1 := sequence.NewSequence("Homo sapiens", []byte("ATAGCTACG"))
+	sequence1.Species = "Homo sapiens"
+	sequence1.Gene = "ATP8"
+
+	sequence2 := sequence.NewSequence("Homo erectus", []byte{})
+	sequence2.Species = "Homo erectus"
+	sequence2.Gene = "ATP8"
+
+	tnt := &formats.TNT{Title: "Title Here"}
+	tnt.AddSequence(sequence1, sequence2)
+
+	if _, err := tnt.GenerateMetaData(); err != nil {
+		t.Errorf("Expected No Error with GenerateMetaData, got %v", err)
+	}
+
+	tnt.CleanData()
+	expected := "---------"
+	got := string(tnt.Sequences["ATP8"]["Homo erectus"].Seq)
+	if got != expected {
+		t.Errorf("Expected CleanData to fill in missing data for 'Homo erectus'. expected '%s', got '%s'",
+			expected, got)
+	}
+}
+
+func TestTwoSpeciesTwoGenesWithOneMissingDataFillsIn(t *testing.T) {
+	sequence1 := sequence.NewSequence("Homo sapiens", []byte("ATAGCTACG"))
+	sequence1.Species = "Homo sapiens"
+	sequence1.Gene = "ATP8"
+
+	sequence2 := sequence.NewSequence("Homo erectus", []byte{})
+	sequence2.Species = "Homo erectus"
+	sequence2.Gene = "ATP8"
+
+	sequence3 := sequence.NewSequence("Homo sapiens", []byte("ATAGCACACTACG"))
+	sequence3.Species = "Homo sapiens"
+	sequence3.Gene = "ATP6"
+
+	sequence4 := sequence.NewSequence("Homo erectus", []byte("ATAGCACACTACG"))
+	sequence4.Species = "Homo erectus"
+	sequence4.Gene = "ATP6"
+
+	tnt := &formats.TNT{Title: "Title Here"}
+	tnt.AddSequence(sequence1, sequence2, sequence3, sequence4)
+
+	if _, err := tnt.GenerateMetaData(); err != nil {
+		t.Errorf("Expected No Error with GenerateMetaData, got %v", err)
+	}
+
+	buf := bytes.Buffer{}
+	tnt.GenerateMetaData()
+	tnt.CleanData()
+	tnt.WriteXRead(&buf)
+
+	expected := `xread
+'Title Here'
+22 2
+Homo_erectus ATAGCACACTACG---------
+Homo_sapiens ATAGCACACTACGATAGCTACG
+;`
+
+	got := buf.String()
+	if got != expected {
+		t.Errorf("Expected CleanData to fill in missing data for 'Homo erectus'. expected '%s', got '%s'",
+			expected, got)
+	}
+}
+func TestTwoSpeciesWithDifferingLengthDataHasError(t *testing.T) {
 	sequence1 := sequence.NewSequence("Homo sapiens", []byte("ATAGCTACG"))
 	sequence1.Species = "Homo sapiens"
 	sequence1.Gene = "ATP8"

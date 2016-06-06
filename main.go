@@ -107,7 +107,7 @@ func handleFastaInput(input string) ([]sequence.Sequence, error) {
 
 	for _, file := range files {
 		ext := path.Ext(file)
-		geneName := file[:len(file)-len(ext)]
+		geneName := filepath.Base(file[:len(file)-len(ext)])
 		err := func() error {
 			fasta := formats.Fasta{SpeciesFromID: true}
 			fd, err := os.Open(file)

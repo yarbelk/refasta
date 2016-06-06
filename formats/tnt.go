@@ -18,6 +18,7 @@ type TNT struct {
 	MetaData     sequence.GMDSlice
 	speciesNames []string
 	Outgroup     string
+	dirtyData    bool
 }
 
 const tntNonInterleavedTemplateString = `xread
@@ -192,6 +193,9 @@ func (t *TNT) WriteSequences(writer io.Writer) error {
 	if _, err := t.GenerateMetaData(); err != nil {
 		return err
 	}
+	if t.dirtyData {
+		t.CleanData()
+	}
 
 	if err := t.WriteXRead(writer); err != nil {
 		return err
@@ -204,32 +208,57 @@ func (t *TNT) WriteSequences(writer io.Writer) error {
 	return nil
 }
 
+func geneLength(lengths map[int][]string) (max int) {
+	for i, _ := range lengths {
+		if i > max {
+			max = i
+		}
+	}
+	return
+}
+
+// fmtInvalidSequenceErr will return a specialized error for invalid
+// sequence lengths.
+func fmtInvalidSequenceErr(lengths map[int][]string) error {
+	return sequence.InvalidSequence{
+		Message: "Sequences are not the Same length",
+		Details: fmt.Sprintf("gene, name: '%s', '%s'\nSequence length: %d, expected length: %d"),
+		Errno:   sequence.MISSMATCHED_SEQUENCE_LENGTHS,
+	}
+}
+
 // GenerateMetaData will make sure that the sequences for the same
 // gene sequence (or whatever sequence) are all the same length.
 // Returns types of InvalidSequence with ErrNo
 // MISSMATCHED_SEQUENCE_LENGTHS if they are no correct
 // If they are correct, it will return a slice of the gene meta data
 // GeneMetaData, sequence.GMDSlice
+// If a sequence is zero; it is not counted as bad.  It  needs to be
+// cleaned up with a call to CleanData
 func (t *TNT) GenerateMetaData() (sequence.GMDSlice, error) {
-	var expectedLen int
 	geneMetaData := make(sequence.GMDSlice, 0, len(t.Sequences))
 
 	for gene, _ := range t.Sequences {
-		for i, name := range t.speciesNames {
+		lengths := make(map[int][]string)
+		for _, name := range t.speciesNames {
 			seq := t.Sequences[gene][name]
-			if i == 0 {
-				expectedLen = seq.Length
-			} else if seq.Length != expectedLen {
-				return nil, sequence.InvalidSequence{
-					Message: "Sequences are not the Same length",
-					Details: "None so far",
-					Errno:   sequence.MISSMATCHED_SEQUENCE_LENGTHS,
-				}
+			if _, ok := lengths[seq.Length]; ok {
+				lengths[seq.Length] = append(lengths[seq.Length], seq.Name)
+			} else {
+				lengths[seq.Length] = []string{seq.Name}
 			}
+		}
+		_, hasZero := lengths[0]
+		if len(lengths) > 1 && !hasZero {
+			return nil, fmtInvalidSequenceErr(lengths)
+		}
+
+		if hasZero {
+			t.dirtyData = true
 		}
 		geneMetaData = append(geneMetaData, sequence.GeneMetaData{
 			Gene:          gene,
-			Length:        expectedLen,
+			Length:        geneLength(lengths),
 			NumberSpecies: len(t.Sequences[gene]),
 		})
 	}
@@ -252,4 +281,30 @@ func (t *TNT) getTotalLength() (length int) {
 func (t *TNT) SetOutgroup(species string) error {
 	t.Outgroup = species
 	return nil
+}
+
+func blankSequence(n int) (seq sequence.SequenceData) {
+	seq = make(sequence.SequenceData, n, n)
+
+	for i, _ := range seq {
+		seq[i] = '-'
+	}
+	return
+}
+
+/*
+CleanData will fill in missing data.
+*/
+func (t *TNT) CleanData() {
+	for _, gmd := range t.MetaData {
+		for _, name := range t.speciesNames {
+			seq := t.Sequences[gmd.Gene][name]
+			if len(seq.Seq) == 0 {
+				seq.Seq = blankSequence(gmd.Length)
+				seq.Length = gmd.Length
+				t.Sequences[gmd.Gene][name] = seq
+			}
+		}
+	}
+
 }
