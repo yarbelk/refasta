@@ -51,7 +51,7 @@ const (
 
 const (
 	PROTEIN_ALPHABET = "GALMFWKQESPVICYHRNDT"
-	DNA_ALPHABET     = "ACGT"
+	DNA_ALPHABET     = "ACGTWSMKRY"
 )
 
 // NewSequence returns a value type Sequence, this will scan the sequence data
@@ -100,74 +100,73 @@ func (s *Sequence) SetAlphabet(alpha map[rune]bool) {
 	s.alphabet = alpha
 }
 
-// isProtein will return true if this is a protein
-// it will log a warning if there are a small number of amino acids
-// I don't particularly like making this a method, but its the easiest
-// way to output a warning
-//
-// Returns TRUE if positivily a protein
-func (s *Sequence) isProtein(alphabet map[rune]bool) bool {
-	var c int
-	for _, a := range PROTEIN_ALPHABET {
+type charLookup func(c rune) bool
+
+var isProtein charLookup = func() charLookup {
+	var k map[rune]bool = make(map[rune]bool)
+	for _, c := range PROTEIN_ALPHABET {
+		k[c] = true
+	}
+	k['X'] = true
+	return func(c rune) bool {
+		return k[c]
+	}
+}()
+
+var isDNA charLookup = func() charLookup {
+	var k map[rune]bool = make(map[rune]bool)
+	for _, c := range DNA_ALPHABET {
+		k[c] = true
+	}
+	return func(c rune) bool {
+		return k[c]
+	}
+}()
+
+// Type of sequence, DNA, Protein, or Unsupported
+func (s *Sequence) Type() SequenceType {
+	var protein, dna int
+	var notDNA, notProtein, blank bool = false, false, true
+
+	for c, _ := range s.alphabet {
 		switch {
-		case alphabet[a]:
-			c++
-		case a == 'X':
-			c++
-		case a == '-':
-		case a == '?':
+		case c == '-':
+		case isProtein(c) && isDNA(c):
+			blank = false
+			protein++
+			dna++
+		case !isProtein(c):
+			blank = false
+			notProtein = true
+		case !isDNA(c):
+			blank = false
+			notDNA = true
 		default:
+			blank = false
 			continue
 		}
 	}
-
-	protein := c > 5 // completly arbitrary: 5 > len(DNA_ALPHABET)
-	if protein && c < len(PROTEIN_ALPHABET) {
-		fmt.Fprintf(os.Stderr, "%s only has %d Amino Acids, please check your data set\n", s.GoString(), c)
-	}
-	return protein
-}
-
-// isBlank checks to see if its a blank type
-func (s *Sequence) isBlank(alphabet map[rune]bool) bool {
-	for _, c := range s.Seq {
-		if c != '-' {
-			return false
-		}
-	}
-	return true
-}
-
-// isDNA checks to see if a sequence is DNA
-func (s *Sequence) isDNA(alphabet map[rune]bool) bool {
-	var c int
-	if s.isProtein(alphabet) {
-		return false
-	}
-	for _, a := range DNA_ALPHABET {
-		if alphabet[a] {
-			c++
-		}
-	}
-	dna := c >= 3 // Arbitrary
-	if dna && c < len(DNA_ALPHABET) {
-		fmt.Fprintf(os.Stderr, "%s only has %d Nucleic Acids, please check your data set\n", s.GoString(), c)
-	}
-	return dna
-}
-
-// Type of sequence, DNA, Protein, or Unsupported
-// TODO: This should be pulled into a single loop!
-func (s *Sequence) Type() SequenceType {
-	switch {
-	case s.isBlank(s.alphabet):
+	if blank {
 		return BLANK_TYPE
-	case s.isProtein(s.alphabet):
-		return PROTEIN_TYPE
-	case s.isDNA(s.alphabet):
-		return DNA_TYPE
-	default:
-		fmt.Fprintf(os.Stderr, "Couldn't determine sequence type, %s\n", s.GoString())
-		return UNSUPPORTED_TYPE
 	}
+	if !notDNA && !notProtein {
+		if dna < len(DNA_ALPHABET) {
+			fmt.Fprintf(os.Stderr, "%s only has %d Nucleic Acids, please check your data set\n", s.GoString())
+		}
+		return DNA_TYPE
+	}
+	if notDNA && !notProtein {
+		if dna < len(DNA_ALPHABET) {
+			fmt.Fprintf(os.Stderr, "%s only has %d Nucleic Acids, please check your data set\n", s.GoString())
+		}
+		return DNA_TYPE
+	}
+	if !notDNA && notProtein {
+		if protein < len(PROTEIN_ALPHABET) {
+			fmt.Fprintf(os.Stderr, "%s only has %d Amino Acids, please check your data set\n", s.GoString())
+		}
+		return PROTEIN_TYPE
+	}
+	fmt.Fprintf(os.Stderr, "Couldn't determine sequence type, %s\n", s.GoString())
+	return UNSUPPORTED_TYPE
 }

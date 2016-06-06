@@ -110,5 +110,29 @@ func TestCanSetOutgroup(t *testing.T) {
 }
 
 func TestBlankSequenceDoesNotChangeType(t *testing.T) {
-	t.Errorf("Not tested yet")
+	sequence1 := sequence.NewSequence("Homo sapiens", []byte("ATAGCTAG"))
+	sequence1.Species = "Homo sapiens"
+	sequence1.Gene = "ATP8"
+
+	sequence2 := sequence.NewSequence("Homo erectus", []byte("ATAGCTAC"))
+	sequence2.Species = "Homo erectus"
+	sequence2.Gene = "ATP8"
+
+	sequence3 := sequence.NewSequence("Homo erectus", []byte("TAGCATAGCTA"))
+	sequence3.Species = "Homo erectus"
+	sequence3.Gene = "ATP6"
+
+	tnt := &formats.TNT{Title: "Title Here"}
+	tnt.AddSequence(sequence1, sequence2, sequence3)
+
+	buf := bytes.Buffer{}
+
+	tnt.WriteNState(&buf)
+
+	expected := "nstates DNA;\n"
+	got := buf.String()
+
+	if expected != got {
+		t.Errorf("Expected the nstates to be '%s', got '%s'", expected, got)
+	}
 }
