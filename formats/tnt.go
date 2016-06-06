@@ -17,6 +17,7 @@ type TNT struct {
 	Sequences    map[string]map[string]sequence.Sequence
 	MetaData     sequence.GMDSlice
 	speciesNames []string
+	Outgroup     string
 }
 
 const tntNonInterleavedTemplateString = `xread
@@ -49,18 +50,31 @@ const TNT_FORMAT = "tnt"
 
 // Construct a species using a GMDSlice to order the gene sequences
 func (t *TNT) PrintableTaxa() []taxonData {
-	t.MetaData.Sort()
+	if t.MetaData == nil {
+		t.GenerateMetaData()
+	}
 	var allSpecies []taxonData = make([]taxonData, 0, len(t.speciesNames))
 
-	for _, n := range t.speciesNames {
+	indexOfOutgroup := 0
+	SafeOutgroup := sequence.Safe(t.Outgroup)
+
+	for i, n := range t.speciesNames {
 		combinedSequences := make([]byte, 0, t.getTotalLength())
 		for _, gmd := range t.MetaData {
 			combinedSequences = append(combinedSequences, t.Sequences[gmd.Gene][n].Seq...)
+		}
+		if sequence.Safe(n) == SafeOutgroup {
+			indexOfOutgroup = i
 		}
 		allSpecies = append(allSpecies, taxonData{
 			SpeciesName: sequence.Safe(n),
 			Sequence:    combinedSequences,
 		})
+	}
+	if indexOfOutgroup != 0 {
+		allSpecies = append(
+			[]taxonData{allSpecies[indexOfOutgroup]},
+			append(allSpecies[:indexOfOutgroup], allSpecies[indexOfOutgroup+1:]...)...)
 	}
 	return allSpecies
 }
@@ -212,4 +226,11 @@ func (t *TNT) getTotalLength() (length int) {
 		length = length + gmd.Length
 	}
 	return
+}
+
+// SetOutgroup will set the outgroup under test.  This sorts it to the top
+// of the list of taxa in the xread block
+func (t *TNT) SetOutgroup(species string) error {
+	t.Outgroup = species
+	return nil
 }

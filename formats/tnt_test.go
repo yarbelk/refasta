@@ -8,7 +8,8 @@ import (
 	"github.com/yarbelk/refasta/sequence"
 )
 
-// TestTwoGenesTwoSpecies should sort the blocks by alphabetical order
+// TestTwoGenesTwoSpecies should sort the blocks by alphabetical order with no defined
+// outgroup
 func TestTwoGenesTwoSpeciesFullOutput(t *testing.T) {
 	sequence1 := sequence.NewSequence("Homo sapiens", []byte("ATAGCTAG"))
 	sequence1.Species = "Homo sapiens"
@@ -71,8 +72,16 @@ func TestCanSetOutgroup(t *testing.T) {
 	sequence4.Species = "B b"
 	sequence4.Gene = "ATP6"
 
+	outgroup := "B b"
+
 	tnt := &formats.TNT{Title: "Title Here"}
 	tnt.AddSequence(sequence1, sequence2, sequence3, sequence4)
 
-	//	tnt.SetOutgroup("B b")
+	tnt.SetOutgroup(outgroup)
+
+	taxa := tnt.PrintableTaxa()
+
+	if taxa[0].SpeciesName != sequence.Safe(outgroup) {
+		t.Errorf("Outgroup '%s' not sorted to the top of the xread: '%g'", taxa, outgroup)
+	}
 }

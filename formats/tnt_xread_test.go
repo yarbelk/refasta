@@ -145,3 +145,36 @@ Homo_sapiens TAGCATAGCTGATAGCTAG
 	}
 
 }
+
+func TestTwoSpiecesWithDefinedOutgroup(t *testing.T) {
+	sequence1 := sequence.NewSequence("Homo sapiens", []byte("ATAGCTACG"))
+	sequence1.Species = "Homo sapiens"
+	sequence1.Gene = "ATP8"
+
+	sequence2 := sequence.NewSequence("Homo erectus", []byte("ATAGTCACG"))
+	sequence2.Species = "Homo erectus"
+	sequence2.Gene = "ATP8"
+
+	tnt := &formats.TNT{Title: "Title Here"}
+	tnt.AddSequence(sequence1, sequence2)
+
+	buf := bytes.Buffer{}
+
+	if _, err := tnt.GenerateMetaData(); err != nil {
+		t.Error("Expected no error, got one", err)
+	}
+
+	tnt.SetOutgroup("Homo sapiens")
+	tnt.WriteXRead(&buf)
+
+	expected := `xread
+'Title Here'
+9 2
+Homo_sapiens ATAGCTACG
+Homo_erectus ATAGTCACG
+;`
+	got := buf.String()
+	if got != expected {
+		t.Errorf("Expected:\n\n\"%s\"\n\nGot:\n\n\"%s\"", expected, got)
+	}
+}
