@@ -22,14 +22,10 @@ func TestTwoSpiecesWithSameLengthData(t *testing.T) {
 
 	buf := bytes.Buffer{}
 
-	var err error
-	tnt.MetaData, err = tnt.GenerateMetaData()
-
-	if err != nil {
+	if _, err := tnt.GenerateMetaData(); err != nil {
 		t.Error("Expected no error, got one", err)
 	}
 
-	tnt.MetaData.Sort()
 	tnt.WriteXRead(&buf)
 
 	expected := `xread
@@ -87,14 +83,10 @@ func TestTwoSpiecesWithSpecialCharacters(t *testing.T) {
 
 	buf := bytes.Buffer{}
 
-	var err error
-	tnt.MetaData, err = tnt.GenerateMetaData()
-
-	if err != nil {
+	if _, err := tnt.GenerateMetaData(); err != nil {
 		t.Error("Expected no error, got one", err)
 	}
 
-	tnt.MetaData.Sort()
 	tnt.WriteXRead(&buf)
 
 	expected := `xread
@@ -139,17 +131,11 @@ Homo_sapiens TAGCATAGCTGATAGCTAG
 
 	buf := bytes.Buffer{}
 
-	var err error
-	tnt.MetaData, err = tnt.GenerateMetaData()
-
-	if err != nil {
+	if _, err := tnt.GenerateMetaData(); err != nil {
 		t.Error("Expected no error, got one", err)
 	}
 
-	tnt.MetaData.Sort()
-	err = tnt.WriteXRead(&buf)
-
-	if err != nil {
+	if err := tnt.WriteXRead(&buf); err != nil {
 		t.Error("Expected no error, got one", err)
 	}
 

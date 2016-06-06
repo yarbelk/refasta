@@ -53,3 +53,26 @@ cnames
 	}
 
 }
+
+func TestCanSetOutgroup(t *testing.T) {
+	sequence1 := sequence.NewSequence("A a", []byte("ATAGCTAG"))
+	sequence1.Species = "A a"
+	sequence1.Gene = "ATP8"
+
+	sequence2 := sequence.NewSequence("B b", []byte("ATAGCTAC"))
+	sequence2.Species = "B b"
+	sequence2.Gene = "ATP8"
+
+	sequence3 := sequence.NewSequence("A a", []byte("TAGCATAGCTG"))
+	sequence3.Species = "A a"
+	sequence3.Gene = "ATP6"
+
+	sequence4 := sequence.NewSequence("B b", []byte("TAGCATAGCTA"))
+	sequence4.Species = "B b"
+	sequence4.Gene = "ATP6"
+
+	tnt := &formats.TNT{Title: "Title Here"}
+	tnt.AddSequence(sequence1, sequence2, sequence3, sequence4)
+
+	//	tnt.SetOutgroup("B b")
+}

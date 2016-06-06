@@ -156,17 +156,14 @@ func (t *TNT) WriteBlocks(writer io.Writer) error {
 // WriteSequences will collect up the sequences, verify their validity,
 // and output a formated TNT file to the supplied writer
 func (t *TNT) WriteSequences(writer io.Writer) error {
-	gmd, err := t.GenerateMetaData()
-
-	if err != nil {
+	if _, err := t.GenerateMetaData(); err != nil {
 		return err
 	}
-	gmd.Sort()
-	t.MetaData = gmd
 
 	if err := t.WriteXRead(writer); err != nil {
 		return err
 	}
+
 	if err := t.WriteBlocks(writer); err != nil {
 		return err
 	}
@@ -203,6 +200,8 @@ func (t *TNT) GenerateMetaData() (sequence.GMDSlice, error) {
 			NumberSpecies: len(t.Sequences[gene]),
 		})
 	}
+	t.MetaData = geneMetaData
+	geneMetaData.Sort()
 	return geneMetaData, nil
 }
 
