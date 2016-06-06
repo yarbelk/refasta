@@ -27,7 +27,8 @@ func TestTwoGenesTwoSpeciesFullOutput(t *testing.T) {
 	sequence4.Species = "Homo erectus"
 	sequence4.Gene = "ATP6"
 
-	expected := `xread
+	expected := `nstates DNA;
+xread
 'Title Here'
 19 2
 Homo_erectus TAGCATAGCTAATAGCTAC
@@ -53,6 +54,28 @@ cnames
 		t.Errorf("Expected:\n\n\"%s\"\n\nGot:\n\n\"%s\"", expected, got)
 	}
 
+}
+
+func TestNSelectIfCanFindType(t *testing.T) {
+	tnt := &formats.TNT{Title: "Title Here"}
+
+	sequence1 := sequence.NewSequence("A a", []byte("ATAGCTAG"))
+	sequence1.Species = "A a"
+	sequence1.Gene = "ATP8"
+
+	tnt.AddSequence(sequence1)
+
+	buf := bytes.Buffer{}
+
+	if err := tnt.WriteNState(&buf); err != nil {
+		t.Error("Expected no error, got one", err)
+	}
+
+	got := buf.String()
+	expected := "nstates DNA;\n"
+	if got != expected {
+		t.Errorf("Expected:\n\n\"%s\"\n\nGot:\n\n\"%s\"", expected, got)
+	}
 }
 
 func TestCanSetOutgroup(t *testing.T) {

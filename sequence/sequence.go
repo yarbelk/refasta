@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"os"
 	"regexp"
 
 	"github.com/yarbelk/refasta/scanner"
@@ -36,6 +37,21 @@ func Safe(in string) string {
 // seq is a specific type of byte slice, so we can throw
 // methods on there for easy handling
 type SequenceData []byte
+
+// SequenceType is one of used in TNT (and probably other things)
+// to determine if the sequence is a DNA sequence or protein sequence
+type SequenceType int
+
+const (
+	UNSUPPORTED_TYPE SequenceType = iota
+	DNA_TYPE
+	PROTEIN_TYPE
+)
+
+const (
+	PROTEIN_ALPHABET = "GALMFWKQESPVICYHRNDT"
+	DNA_ALPHABET     = "ACGT"
+)
 
 // NewSequence returns a value type Sequence, this will scan the sequence data
 // to determin its length; so only use this is you haven't already done something
@@ -81,4 +97,54 @@ func (s Sequence) GoString() string {
 // SetAlphabet will set the alphabet map.
 func (s *Sequence) SetAlphabet(alpha map[rune]bool) {
 	s.alphabet = alpha
+}
+
+// isProtein will return true if this is a protein
+// it will log a warning if there are a small number of amino acids
+// I don't particularly like making this a method, but its the easiest
+// way to output a warning
+func (s *Sequence) isProtein(alphabet map[rune]bool) bool {
+	var c int
+	for _, a := range PROTEIN_ALPHABET {
+		if alphabet[a] {
+			c++
+		}
+	}
+	protein := c > 5 // completly arbitrary: 5 > len(DNA_ALPHABET)
+	if protein && c < len(PROTEIN_ALPHABET) {
+		fmt.Fprintf(os.Stderr, "%s only has %d Amino Acids, please check your data set\n", s.GoString(), c)
+	}
+	return protein
+}
+
+// isDNA checks to see if a sequence is DNA
+func (s *Sequence) isDNA(alphabet map[rune]bool) bool {
+	var c int
+	if s.isProtein(alphabet) {
+		return false
+	}
+	for _, a := range DNA_ALPHABET {
+		if alphabet[a] {
+			c++
+		}
+	}
+	dna := c >= 3 // Arbitrary
+	if dna && c < len(DNA_ALPHABET) {
+		fmt.Fprintf(os.Stderr, "%s only has %d Nucleic Acids, please check your data set\n", s.GoString(), c)
+	}
+	return dna
+}
+
+// Type of sequence, DNA, Protein, or Unsupported
+func (s *Sequence) Type() SequenceType {
+	switch {
+	case s.isProtein(s.alphabet):
+		return PROTEIN_TYPE
+	case s.isDNA(s.alphabet):
+		return DNA_TYPE
+	default:
+		fmt.Fprintf(os.Stderr, "Couldn't determine sequence type, %s\n", s.GoString())
+		return UNSUPPORTED_TYPE
+	}
+
 }

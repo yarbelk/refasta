@@ -156,7 +156,7 @@ func handleTNTOutput(context TNTContext, sequences []sequence.Sequence, output s
 
 func main() {
 	inputFormat := flag.StringP("input-format", "f", formats.FASTA_FORMAT, "intput format, must be 'fasta'")
-	outputFormat := flag.StringP("outpu-format", "F", formats.TNT_FORMAT, "output format, must be [fasta|tnt]")
+	outputFormat := flag.StringP("output-format", "F", formats.TNT_FORMAT, "output format, must be [fasta|tnt]")
 	input := flag.StringP("input-file", "i", "--", "input file, it must be a valid input, or '--', or blank.  if blank. or '--', will read from stdin")
 	output := flag.StringP("output-file", "o", "--", "output file, it must be a valid input, or '--', or blank.  if blank. or '--', will write to stdout")
 	tntTitle := flag.StringP("tnt-title", "t", "", "title for TNT output")
@@ -168,7 +168,6 @@ func main() {
 
 	switch *inputFormat {
 	case formats.FASTA_FORMAT:
-		fmt.Fprintf(os.Stderr, "intput format is fasta; parsing\n")
 		sequences, err = handleFastaInput(*input)
 	default:
 		fmt.Fprintf(os.Stderr, "Unknown intput format '%s'", inputFormat)
@@ -182,7 +181,6 @@ func main() {
 
 	switch *outputFormat {
 	case formats.FASTA_FORMAT:
-		fmt.Fprintf(os.Stderr, "Output format is fasta; serializing\n")
 		if err := handleFastaOutput(sequences, *output); err != nil {
 			fmt.Fprintf(os.Stderr, "%s\n", err.Error())
 			os.Exit(1)

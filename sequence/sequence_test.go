@@ -39,3 +39,23 @@ func TestNewSequenceCountsLengthWithBrackets(t *testing.T) {
 		t.Errorf("sequence has wrong length, expected '%d', got '%d'", expected, seq.Length)
 	}
 }
+
+func TestIdentifiesDNAFromAlphabet(t *testing.T) {
+	seq := sequence.NewSequence("test", []byte("ATAGAT[AG]"))
+
+	expected := sequence.DNA_TYPE
+
+	if seq.Type() != expected {
+		t.Errorf("Expected the sequence type to be '%s', was '%s'", expected, seq.Type())
+	}
+}
+
+func TestIdentifiesProteinFromAlphabet(t *testing.T) {
+	seq := sequence.NewSequence("test", []byte("SSSGSKIADT"))
+
+	expected := sequence.PROTEIN_TYPE
+
+	if seq.Type() != expected {
+		t.Errorf("Expected the sequence type to be '%s', was '%s'", expected, seq.Type())
+	}
+}

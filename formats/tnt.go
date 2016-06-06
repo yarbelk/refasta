@@ -3,6 +3,7 @@ package formats
 import (
 	"fmt"
 	"io"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -12,6 +13,12 @@ import (
 )
 
 // TNT formatter
+// TODO move Sequences access to an interface; this way all formats
+// can use the same interface, and I can change the data structure
+// to be a slice, with a lookup map (`map[string]map[string]int`,
+// where the int is the index.)  This makes building aggregate data
+// much more understandable (no nexted loops).  It shouldn't impact
+// performance.
 type TNT struct {
 	Title             string
 	Sequences         map[string]map[string]sequence.Sequence
@@ -131,6 +138,40 @@ func (t *TNT) AddSequence(seqs ...sequence.Sequence) {
 }
 
 /*
+WriteNState header *if* we have a valid type.  Assume they are all the
+same state at the moment
+*/
+func (t *TNT) WriteNState(writer io.Writer) error {
+	first := true
+	var seqType sequence.SequenceType
+top:
+	for gene, _ := range t.Sequences {
+		for _, seq := range t.Sequences[gene] {
+			if first {
+				first = false
+				seqType = seq.Type()
+			}
+			if seq.Type() != seqType || seq.Type() == sequence.UNSUPPORTED_TYPE {
+				seqType = sequence.UNSUPPORTED_TYPE
+				break top
+			}
+		}
+	}
+	switch seqType {
+	case sequence.DNA_TYPE:
+		writer.Write([]byte("nstates DNA;\n"))
+	case sequence.PROTEIN_TYPE:
+		writer.Write([]byte("nstates PROT;\n"))
+	case sequence.UNSUPPORTED_TYPE:
+		fallthrough
+	default:
+		fmt.Fprintf(os.Stderr, "data is either mixed DNA/PROT, or an unsupported type; cowardly refusing to set the nstates\n")
+		break
+	}
+	return nil
+}
+
+/*
 WriteXRead writes out the xread block; which contains the sequence
 and taxa data
 
@@ -202,6 +243,10 @@ func (t *TNT) WriteSequences(writer io.Writer) error {
 	}
 	if t.dirtyData {
 		t.CleanData()
+	}
+
+	if err := t.WriteNState(writer); err != nil {
+		return err
 	}
 
 	if err := t.WriteXRead(writer); err != nil {
