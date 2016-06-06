@@ -82,15 +82,17 @@ func (t *TNT) AddSequence(seqs ...sequence.Sequence) {
 	}
 }
 
-// WriteSequences will collect up the sequences, verify their validity,
-// and output a formated TNT file to the supplied writer
-func (t *TNT) WriteSequences(writer io.Writer) error {
-	gmd, err := t.GenerateMetaData()
-	if err != nil {
-		return err
-	}
-	gmd.Sort()
-	t.MetaData = gmd
+/*
+WriteXRead writes out the xread block; which contains the sequence
+and taxa data
+
+	xread
+	taxa_1 CTAGC...
+	taxa_2 TAGCA...
+	;
+
+*/
+func (t *TNT) WriteXRead(writer io.Writer) error {
 	allSpecies := t.PrintableTaxa()
 	context := templateContext{
 		Title:  t.Title,
@@ -99,6 +101,24 @@ func (t *TNT) WriteSequences(writer io.Writer) error {
 		Taxa:   allSpecies,
 	}
 	return tntNonInterleavedTemplate.Execute(writer, context)
+}
+
+// WriteSequences will collect up the sequences, verify their validity,
+// and output a formated TNT file to the supplied writer
+func (t *TNT) WriteSequences(writer io.Writer) error {
+	gmd, err := t.GenerateMetaData()
+
+	if err != nil {
+		return err
+	}
+	gmd.Sort()
+	t.MetaData = gmd
+
+	if err := t.WriteXRead(writer); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // GenerateMetaData will make sure that the sequences for the same
