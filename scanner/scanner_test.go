@@ -10,10 +10,13 @@ import (
 
 func TestStoresLengthOfNormalSequence(t *testing.T) {
 	buf := bufio.NewReader(bytes.NewBuffer([]byte("ATAGC")))
-	lit, length, err := scanner.ScanSequenceData(buf)
+	lit, length, alpha, err := scanner.ScanSequenceData(buf)
 	expected := 5
 	if err != nil {
 		t.Errorf("Expected no error: got '%s'", err.Error())
+	}
+	if len(alpha) != 4 {
+		t.Errorf("Alphabet returned didn't have the right length; expected 4, got %d", len(alpha))
 	}
 	if string(lit) != "ATAGC" {
 		t.Errorf("Expected: '%s', got '%s'", "ATAGC", lit)
@@ -25,7 +28,7 @@ func TestStoresLengthOfNormalSequence(t *testing.T) {
 
 func TestStoresLengthOfSequenceWithDash(t *testing.T) {
 	buf := bufio.NewReader(bytes.NewBuffer([]byte("AT-AGC")))
-	lit, length, err := scanner.ScanSequenceData(buf)
+	lit, length, _, err := scanner.ScanSequenceData(buf)
 	expected := 6
 	if err != nil {
 		t.Errorf("Expected no error: got '%s'", err.Error())
@@ -40,7 +43,7 @@ func TestStoresLengthOfSequenceWithDash(t *testing.T) {
 
 func TestStoresLengthOfSequenceWithQuestionMark(t *testing.T) {
 	buf := bufio.NewReader(bytes.NewBuffer([]byte("AT?AGC")))
-	_, length, err := scanner.ScanSequenceData(buf)
+	_, length, _, err := scanner.ScanSequenceData(buf)
 	expected := 6
 	if err != nil {
 		t.Errorf("Expected no error: got '%s'", err.Error())
@@ -52,7 +55,7 @@ func TestStoresLengthOfSequenceWithQuestionMark(t *testing.T) {
 
 func TestStoresLengthOfSequenceWithBraces(t *testing.T) {
 	buf := bufio.NewReader(bytes.NewBuffer([]byte("AT[AG]C")))
-	_, length, err := scanner.ScanSequenceData(buf)
+	_, length, _, err := scanner.ScanSequenceData(buf)
 	expected := 4
 	if err != nil {
 		t.Errorf("Expected no error: got '%s'", err.Error())

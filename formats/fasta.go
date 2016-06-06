@@ -45,7 +45,7 @@ func (f *Fasta) Parse(input io.Reader, geneName ...string) error {
 	var newSequence sequence.Sequence = sequence.NewSequence("", []byte{})
 	var lastToken Token = UNSTARTED
 	for {
-		token, lit, length := fastaScanner.Scan()
+		token, lit, alpha, length := fastaScanner.Scan()
 
 		switch token {
 		case SEQUENCE_ID:
@@ -57,6 +57,7 @@ func (f *Fasta) Parse(input io.Reader, geneName ...string) error {
 				}
 			}
 			newSequence = sequence.Sequence{Name: string(lit), Gene: gene}
+			(&newSequence).SetAlphabet(alpha)
 			if f.SpeciesFromID {
 				newSequence.Species = string(lit)
 			}

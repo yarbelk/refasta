@@ -53,7 +53,8 @@ func IsSequenceData(c rune) bool {
 
 // ScanSequenceData will return a string of sequence data, removing all
 // new line characters
-func ScanSequenceData(reader *bufio.Reader) (lit []byte, length int, err error) {
+func ScanSequenceData(reader *bufio.Reader) (lit []byte, length int, alphabet map[rune]bool, err error) {
+	alphabet = make(map[rune]bool)
 	buf := bytes.Buffer{}
 
 scanLoop:
@@ -69,11 +70,15 @@ scanLoop:
 		case IsSequenceData(ch):
 			length++
 			buf.WriteRune(ch)
+			alphabet[ch] = true
 			continue scanLoop
 		case ch == '[':
-			subSeq, subLen, err := scanSequenceDataGroup(reader)
+			subSeq, subLen, alpha, err := scanSequenceDataGroup(reader)
+			for k, _ := range alpha {
+				alphabet[k] = true
+			}
 			if err != nil {
-				return subSeq, subLen, err
+				return subSeq, subLen, alphabet, err
 			}
 			buf.Write(subSeq)
 			length = length + subLen
@@ -98,7 +103,8 @@ scanLoop:
 
 // scanSequenceDataGroup handles the scanning of [ATGA] like sequence
 // structures.
-func scanSequenceDataGroup(reader *bufio.Reader) (lit []byte, length int, err error) {
+func scanSequenceDataGroup(reader *bufio.Reader) (lit []byte, length int, alphabet map[rune]bool, err error) {
+	alphabet = make(map[rune]bool)
 	buf := bytes.Buffer{}
 
 scanLoop:
@@ -115,6 +121,7 @@ scanLoop:
 			continue scanLoop
 		case IsSequenceData(ch):
 			buf.WriteRune(ch)
+			alphabet[ch] = true
 			continue scanLoop
 		case ch == ']':
 			length++
@@ -122,7 +129,7 @@ scanLoop:
 			lit, err = buf.Bytes(), nil
 			break scanLoop
 		case ch == '>', ch == eof:
-			return []byte{}, 0, InvalidChar(fmt.Errorf("Unbalanced [] in sequence data: postion %d", length))
+			return []byte{}, 0, nil, InvalidChar(fmt.Errorf("Unbalanced [] in sequence data: postion %d", length))
 		default:
 			lit, err = buf.Bytes(), InvalidChar(fmt.Errorf("No idea what this is '%s' in the char stream", ch))
 			break scanLoop

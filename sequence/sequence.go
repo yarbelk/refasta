@@ -23,6 +23,8 @@ type Sequence struct {
 	// Length is the Logical Length of a sequence; where polymorphics are counted
 	// as a single length eg: [AG] == len 1
 	Length int
+	// alphabet is the unique character in this sequence
+	alphabet map[rune]bool
 }
 
 var safeRegex = regexp.MustCompile("( )")
@@ -39,8 +41,8 @@ type SequenceData []byte
 // to determin its length; so only use this is you haven't already done something
 // to get the length of the data.
 func NewSequence(name string, seq []byte) Sequence {
-	_, length, _ := scanner.ScanSequenceData(bufio.NewReader(bytes.NewBuffer(seq)))
-	return Sequence{Name: name, Seq: SequenceData(seq), Length: length}
+	_, length, alpha, _ := scanner.ScanSequenceData(bufio.NewReader(bytes.NewBuffer(seq)))
+	return Sequence{Name: name, Seq: SequenceData(seq), Length: length, alphabet: alpha}
 }
 
 // String represesntiation of a Seq is just typecasting to a `string`
@@ -74,4 +76,9 @@ func (s Sequence) GoString() string {
 		truncatedSequence,
 		s.Length,
 	)
+}
+
+// SetAlphabet will set the alphabet map.
+func (s *Sequence) SetAlphabet(alpha map[rune]bool) {
+	s.alphabet = alpha
 }
