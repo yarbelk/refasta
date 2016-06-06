@@ -79,7 +79,7 @@ func TestCanSetOutgroup(t *testing.T) {
 
 	tnt.SetOutgroup(outgroup)
 
-	taxa := tnt.PrintableTaxa()
+	taxa, _ := tnt.PrintableTaxa()
 
 	if taxa[0].SpeciesName != sequence.Safe(outgroup) {
 		t.Errorf("Outgroup '%s' not sorted to the top of the xread: '%g'", taxa, outgroup)

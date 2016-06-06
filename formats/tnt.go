@@ -13,12 +13,14 @@ import (
 
 // TNT formatter
 type TNT struct {
-	Title        string
-	Sequences    map[string]map[string]sequence.Sequence
-	MetaData     sequence.GMDSlice
-	speciesNames []string
-	Outgroup     string
-	dirtyData    bool
+	Title             string
+	Sequences         map[string]map[string]sequence.Sequence
+	MetaData          sequence.GMDSlice
+	speciesNames      []string
+	Outgroup          string
+	dirtyData         bool
+	maxSequenceLength int
+	blankSeq          sequence.SequenceData
 }
 
 const tntNonInterleavedTemplateString = `xread
@@ -54,9 +56,11 @@ Construct a species using a GMDSlice to order the gene sequences.
 If there is a defined outgroup, then sort that to the front of the
 printable list
 */
-func (t *TNT) PrintableTaxa() []taxonData {
+func (t *TNT) PrintableTaxa() ([]taxonData, error) {
 	if t.MetaData == nil {
-		t.GenerateMetaData()
+		if _, err := t.GenerateMetaData(); err != nil {
+			return nil, err
+		}
 	}
 	var allSpecies []taxonData = make([]taxonData, 0, len(t.speciesNames))
 	t.sortByOutgroup()
@@ -71,7 +75,7 @@ func (t *TNT) PrintableTaxa() []taxonData {
 			Sequence:    combinedSequences,
 		})
 	}
-	return allSpecies
+	return allSpecies, nil
 }
 
 /*
@@ -137,7 +141,10 @@ and taxa data
 
 */
 func (t *TNT) WriteXRead(writer io.Writer) error {
-	allSpecies := t.PrintableTaxa()
+	allSpecies, err := t.PrintableTaxa()
+	if err != nil {
+		return err
+	}
 	context := templateContext{
 		Title:  t.Title,
 		Length: t.getTotalLength(),
@@ -219,22 +226,34 @@ func geneLength(lengths map[int][]string) (max int) {
 
 // fmtInvalidSequenceErr will return a specialized error for invalid
 // sequence lengths.
-func fmtInvalidSequenceErr(lengths map[int][]string) error {
+func fmtInvalidSequenceErr(sequenceName string, lengths map[int][]string) error {
+	details := []string{}
+	for length, seqs := range lengths {
+		details = append(details, fmt.Sprintf("\t%d: %s", length, strings.Join(seqs, ", ")))
+	}
+
+	detailedMessage := fmt.Sprintf("Sequence %s has inconsistant sequence lengths:\n%s", sequenceName, strings.Join(details, "\n"))
 	return sequence.InvalidSequence{
 		Message: "Sequences are not the Same length",
-		Details: fmt.Sprintf("gene, name: '%s', '%s'\nSequence length: %d, expected length: %d"),
+		Details: detailedMessage,
 		Errno:   sequence.MISSMATCHED_SEQUENCE_LENGTHS,
 	}
 }
 
-// GenerateMetaData will make sure that the sequences for the same
-// gene sequence (or whatever sequence) are all the same length.
-// Returns types of InvalidSequence with ErrNo
-// MISSMATCHED_SEQUENCE_LENGTHS if they are no correct
-// If they are correct, it will return a slice of the gene meta data
-// GeneMetaData, sequence.GMDSlice
-// If a sequence is zero; it is not counted as bad.  It  needs to be
-// cleaned up with a call to CleanData
+/*
+GenerateMetaData will make sure that the sequences for the same
+gene sequence (or whatever sequence) are all the same length.
+Returns types of InvalidSequence with ErrNo
+MISSMATCHED_SEQUENCE_LENGTHS if they are no correct
+If they are correct, it will return a slice of the gene meta data
+GeneMetaData, sequence.GMDSlice
+
+If a sequence is zero; it is not counted as bad.  It  needs to be
+cleaned up with a call to CleanData
+
+This will also set the max lenght sequence size; which is used
+by some helper functions
+*/
 func (t *TNT) GenerateMetaData() (sequence.GMDSlice, error) {
 	geneMetaData := make(sequence.GMDSlice, 0, len(t.Sequences))
 
@@ -242,6 +261,9 @@ func (t *TNT) GenerateMetaData() (sequence.GMDSlice, error) {
 		lengths := make(map[int][]string)
 		for _, name := range t.speciesNames {
 			seq := t.Sequences[gene][name]
+			if seq.Length > t.maxSequenceLength {
+				t.maxSequenceLength = seq.Length
+			}
 			if _, ok := lengths[seq.Length]; ok {
 				lengths[seq.Length] = append(lengths[seq.Length], seq.Name)
 			} else {
@@ -249,8 +271,8 @@ func (t *TNT) GenerateMetaData() (sequence.GMDSlice, error) {
 			}
 		}
 		_, hasZero := lengths[0]
-		if len(lengths) > 1 && !hasZero {
-			return nil, fmtInvalidSequenceErr(lengths)
+		if (len(lengths) > 2) || (len(lengths) > 1 && !hasZero) {
+			return nil, fmtInvalidSequenceErr(gene, lengths)
 		}
 
 		if hasZero {
@@ -284,20 +306,21 @@ func (t *TNT) SetOutgroup(species string) error {
 }
 
 /*
-blankSequence allocates a new (!!!) byte array of '---', n long
+blankSequence returns a slice of '---' bytes.  Does this by pre-allocating
 
-TODO this can be optimized by getting the longest gene sequence,
-from the GMD, and pre-allocating that.  Then I just need to
-
-	return bigSlice[:n]
+the longest that could be returned, and slicing up subsets of it to be returned.
+this should be fine because once returned, they should never be modified,
+so the shared memory should not be a problem
 */
-func blankSequence(n int) (seq sequence.SequenceData) {
-	seq = make(sequence.SequenceData, n, n)
-
-	for i, _ := range seq {
-		seq[i] = '-'
+func (t *TNT) blankSequence(n int) sequence.SequenceData {
+	if t.blankSeq == nil || len(t.blankSeq) < t.maxSequenceLength {
+		t.blankSeq = make(sequence.SequenceData, t.maxSequenceLength, t.maxSequenceLength)
+		for i, _ := range t.blankSeq {
+			t.blankSeq[i] = '-'
+		}
 	}
-	return
+
+	return t.blankSeq[:n]
 }
 
 /*
@@ -308,7 +331,7 @@ func (t *TNT) CleanData() {
 		for _, name := range t.speciesNames {
 			seq := t.Sequences[gmd.Gene][name]
 			if len(seq.Seq) == 0 {
-				seq.Seq = blankSequence(gmd.Length)
+				seq.Seq = t.blankSequence(gmd.Length)
 				seq.Length = gmd.Length
 				t.Sequences[gmd.Gene][name] = seq
 			}
