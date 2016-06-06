@@ -88,6 +88,9 @@ func dirInput(dir, format string, recurse bool) ([]string, error) {
 
 func isDirectory(path string) (bool, error) {
 	fileInfo, err := os.Stat(path)
+	if err != nil {
+		return false, err
+	}
 	return fileInfo.IsDir(), err
 }
 
@@ -154,6 +157,14 @@ func handleTNTOutput(context TNTContext, sequences []sequence.Sequence, output s
 	return tnt.WriteSequences(fd)
 }
 
+func fatalWithUsage(err error) {
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error:\n%s\n\n", err.Error())
+		flag.PrintDefaults()
+		os.Exit(1)
+	}
+}
+
 func main() {
 	inputFormat := flag.StringP("input-format", "f", formats.FASTA_FORMAT, "intput format, must be 'fasta'")
 	outputFormat := flag.StringP("output-format", "F", formats.TNT_FORMAT, "output format, must be [fasta|tnt]")
@@ -170,34 +181,23 @@ func main() {
 	case formats.FASTA_FORMAT:
 		sequences, err = handleFastaInput(*input)
 	default:
-		fmt.Fprintf(os.Stderr, "Unknown intput format '%s'", inputFormat)
-		os.Exit(1)
+		err = fmt.Errorf("Unknown intput format '%s'", inputFormat)
 	}
-
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s\n", err.Error())
-		os.Exit(1)
-	}
+	fatalWithUsage(err)
 
 	switch *outputFormat {
 	case formats.FASTA_FORMAT:
-		if err := handleFastaOutput(sequences, *output); err != nil {
-			fmt.Fprintf(os.Stderr, "%s\n", err.Error())
-			os.Exit(1)
-		}
+		err = handleFastaOutput(sequences, *output)
 	case formats.TNT_FORMAT:
 		fmt.Fprintf(os.Stderr, "Output format is TNT; serializing\n")
 		context := TNTContext{
 			Title:    *tntTitle,
 			Outgroup: *outgroup,
 		}
-		if err := handleTNTOutput(context, sequences, *output); err != nil {
-			fmt.Fprintf(os.Stderr, "%s\n", err.Error())
-			os.Exit(1)
-		}
+		err = handleTNTOutput(context, sequences, *output)
 	default:
-		fmt.Fprintf(os.Stderr, "Unknown output format '%s'", inputFormat)
-		os.Exit(1)
+		err = fmt.Errorf("Unknown output format '%s'", inputFormat)
 	}
+	fatalWithUsage(err)
 
 }
