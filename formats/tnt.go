@@ -283,6 +283,14 @@ func (t *TNT) SetOutgroup(species string) error {
 	return nil
 }
 
+/*
+blankSequence allocates a new (!!!) byte array of '---', n long
+
+TODO this can be optimized by getting the longest gene sequence,
+from the GMD, and pre-allocating that.  Then I just need to
+
+	return bigSlice[:n]
+*/
 func blankSequence(n int) (seq sequence.SequenceData) {
 	seq = make(sequence.SequenceData, n, n)
 
