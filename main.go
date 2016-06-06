@@ -25,6 +25,10 @@ type FakeWriteCloser struct {
 	io.Writer
 }
 
+type TNTContext struct {
+	Title string
+}
+
 func (f FakeWriteCloser) Close() error {
 	return nil
 }
@@ -133,8 +137,16 @@ func handleFastaOutput(sequences []sequence.Sequence, output string) error {
 	return fasta.WriteSequences(fd)
 }
 
-func handleTNTOutput(sequences []sequence.Sequence, output string) error {
-	return nil
+func handleTNTOutput(context TNTContext, sequences []sequence.Sequence, output string) error {
+	tnt := formats.TNT{Title: context.Title}
+	fmt.Println(sequences)
+	tnt.AddSequence(sequences...)
+	fd, err := os.Create(output)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Issue opening output file;\n%s", err.Error())
+	}
+	defer fd.Close()
+	return tnt.WriteSequences(fd)
 }
 
 func main() {
@@ -142,6 +154,7 @@ func main() {
 	outputFormat := flag.StringP("outpu-format", "F", formats.TNT_FORMAT, "output format, must be [fasta|tnt]")
 	input := flag.StringP("input-file", "i", "--", "input file, it must be a valid input, or '--', or blank.  if blank. or '--', will read from stdin")
 	output := flag.StringP("output-file", "o", "--", "output file, it must be a valid input, or '--', or blank.  if blank. or '--', will write to stdout")
+	tntTitle := flag.StringP("tnt-title", "t", "", "title for TNT output")
 	flag.Parse()
 
 	var sequences []sequence.Sequence
@@ -170,7 +183,10 @@ func main() {
 		}
 	case formats.TNT_FORMAT:
 		fmt.Fprintf(os.Stderr, "Output format is TNT; serializing\n")
-		if err := handleTNTOutput(sequences, *output); err != nil {
+		context := TNTContext{
+			Title: *tntTitle,
+		}
+		if err := handleTNTOutput(context, sequences, *output); err != nil {
 			fmt.Fprintf(os.Stderr, "%s\n", err.Error())
 			os.Exit(1)
 		}
