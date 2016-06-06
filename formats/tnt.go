@@ -58,29 +58,44 @@ func (t *TNT) PrintableTaxa() []taxonData {
 		t.GenerateMetaData()
 	}
 	var allSpecies []taxonData = make([]taxonData, 0, len(t.speciesNames))
+	t.sortByOutgroup()
 
-	indexOfOutgroup := 0
-	SafeOutgroup := sequence.Safe(t.Outgroup)
-
-	for i, n := range t.speciesNames {
+	for _, n := range t.speciesNames {
 		combinedSequences := make([]byte, 0, t.getTotalLength())
 		for _, gmd := range t.MetaData {
 			combinedSequences = append(combinedSequences, t.Sequences[gmd.Gene][n].Seq...)
-		}
-		if sequence.Safe(n) == SafeOutgroup {
-			indexOfOutgroup = i
 		}
 		allSpecies = append(allSpecies, taxonData{
 			SpeciesName: sequence.Safe(n),
 			Sequence:    combinedSequences,
 		})
 	}
-	if indexOfOutgroup != 0 {
-		allSpecies = append(
-			[]taxonData{allSpecies[indexOfOutgroup]},
-			append(allSpecies[:indexOfOutgroup], allSpecies[indexOfOutgroup+1:]...)...)
-	}
 	return allSpecies
+}
+
+/*
+sortByOutgroup is a helper method to sort the species names,
+starting with the outgroup.  This is used to format the xread block
+with the outgroup as the first species in the list.
+*/
+func (t *TNT) sortByOutgroup() {
+	if t.Outgroup == "" {
+		return
+	}
+	var index int = 0
+	safeOG := sequence.Safe(t.Outgroup)
+	for j, n := range t.speciesNames {
+		if safeOG == sequence.Safe(n) {
+			index = j
+			break
+		}
+	}
+
+	a := t.speciesNames[index]
+	t.speciesNames = append(
+		append(t.speciesNames[:1], t.speciesNames[0:index]...),
+		t.speciesNames[index+1:]...)
+	t.speciesNames[0] = a
 }
 
 // insertString into the place that would keep it uniquely and ordered ascending

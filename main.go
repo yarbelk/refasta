@@ -26,7 +26,8 @@ type FakeWriteCloser struct {
 }
 
 type TNTContext struct {
-	Title string
+	Title    string
+	Outgroup string
 }
 
 func (f FakeWriteCloser) Close() error {
@@ -141,6 +142,7 @@ func handleTNTOutput(context TNTContext, sequences []sequence.Sequence, output s
 	tnt := formats.TNT{Title: context.Title}
 	fmt.Println(sequences)
 	tnt.AddSequence(sequences...)
+	tnt.SetOutgroup(context.Outgroup)
 	fd, err := os.Create(output)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Issue opening output file;\n%s", err.Error())
@@ -155,6 +157,7 @@ func main() {
 	input := flag.StringP("input-file", "i", "--", "input file, it must be a valid input, or '--', or blank.  if blank. or '--', will read from stdin")
 	output := flag.StringP("output-file", "o", "--", "output file, it must be a valid input, or '--', or blank.  if blank. or '--', will write to stdout")
 	tntTitle := flag.StringP("tnt-title", "t", "", "title for TNT output")
+	outgroup := flag.String("outgroup", "", "outgroup for TNT")
 	flag.Parse()
 
 	var sequences []sequence.Sequence
@@ -184,7 +187,8 @@ func main() {
 	case formats.TNT_FORMAT:
 		fmt.Fprintf(os.Stderr, "Output format is TNT; serializing\n")
 		context := TNTContext{
-			Title: *tntTitle,
+			Title:    *tntTitle,
+			Outgroup: *outgroup,
 		}
 		if err := handleTNTOutput(context, sequences, *output); err != nil {
 			fmt.Fprintf(os.Stderr, "%s\n", err.Error())

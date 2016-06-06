@@ -146,17 +146,26 @@ Homo_sapiens TAGCATAGCTGATAGCTAG
 
 }
 
-func TestTwoSpiecesWithDefinedOutgroup(t *testing.T) {
-	sequence1 := sequence.NewSequence("Homo sapiens", []byte("ATAGCTACG"))
-	sequence1.Species = "Homo sapiens"
+func TestFourSpiecesWithDefinedOutgroupFromMiddle(t *testing.T) {
+	sequence1 := sequence.NewSequence("A a", []byte("ATAGCTACG"))
+	sequence1.Species = "A a"
 	sequence1.Gene = "ATP8"
 
-	sequence2 := sequence.NewSequence("Homo erectus", []byte("ATAGTCACG"))
-	sequence2.Species = "Homo erectus"
+	sequence2 := sequence.NewSequence("B b", []byte("ATAGTCACG"))
+	sequence2.Species = "B b"
 	sequence2.Gene = "ATP8"
 
+	sequence3 := sequence.NewSequence("C c", []byte("ATAGCTACG"))
+	sequence3.Species = "C c"
+	sequence3.Gene = "ATP8"
+
+	sequence4 := sequence.NewSequence("D d", []byte("ATAGTCACG"))
+	sequence4.Species = "D d"
+	sequence4.Gene = "ATP8"
+
 	tnt := &formats.TNT{Title: "Title Here"}
-	tnt.AddSequence(sequence1, sequence2)
+	tnt.AddSequence(sequence1, sequence2, sequence3, sequence4)
+	tnt.SetOutgroup("C c")
 
 	buf := bytes.Buffer{}
 
@@ -164,14 +173,15 @@ func TestTwoSpiecesWithDefinedOutgroup(t *testing.T) {
 		t.Error("Expected no error, got one", err)
 	}
 
-	tnt.SetOutgroup("Homo sapiens")
 	tnt.WriteXRead(&buf)
 
 	expected := `xread
 'Title Here'
-9 2
-Homo_sapiens ATAGCTACG
-Homo_erectus ATAGTCACG
+9 4
+C_c ATAGCTACG
+A_a ATAGCTACG
+B_b ATAGTCACG
+D_d ATAGTCACG
 ;`
 	got := buf.String()
 	if got != expected {
