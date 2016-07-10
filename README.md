@@ -8,6 +8,12 @@ This is born out of the complexity that arrises from the abuse and missuse of
 biology file formats, such as [fasta](https://en.wikipedia.org/wiki/FASTA),
 or the complexity of the formats, such as [TNT](http://www.lillo.org.ar/phylogeny/tnt/).
 
+
+## Installation
+
+if you have `go` installed on your system, you can `go get github.com/yarbelk/refasta`
+Otherwise, look at the releases page.
+
 TODO
 
 - [x] Read a Fasta file, output a fasta file
