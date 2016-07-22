@@ -13,6 +13,22 @@ import (
 	"gopkg.in/urfave/cli.v1"
 )
 
+var sequences []sequence.Sequence
+
+type CommandError struct {
+	error
+	c *cli.Context
+}
+
+func (c CommandError) UsageAndFail() {
+	if c.error != nil {
+		fmt.Fprintln(c.c.App.Writer, c.error.Error())
+		cli.ShowAppHelp(c.c)
+		os.Exit(1)
+	}
+
+}
+
 type FakeReadCloser struct {
 	io.Reader
 }
@@ -157,87 +173,91 @@ func handleTNTOutput(context TNTContext, sequences []sequence.Sequence, output s
 	return tnt.WriteSequences(fd)
 }
 
+func parseInput(c *cli.Context) error {
+	var err error
+	var inputFormat string = c.String("intput-format")
+	switch inputFormat {
+	case formats.FASTA_FORMAT:
+		sequences, err = handleFastaInput(c.String("input"))
+	default:
+		err = CommandError{fmt.Errorf("Unknown intput format '%s'", inputFormat), c}
+	}
+	return err
+}
+
 func main() {
 
 	app := cli.NewApp()
 	app.Name = "refasta"
-	app.Usage = `Convert various genitics data formats into other formats.
-	Currently only fasta and tnt are supported, and in an opinionated way.`
-
+	app.Usage = "Convert various genitics data formats into other formats. " +
+		"Currently only fasta and tnt are supported, and in an opinionated way."
 	app.Flags = []cli.Flag{
+		cli.StringFlag{
+			Name:  "input, i",
+			Value: "",
+			Usage: "`INPUT`, it must be either a file or directory.  If blank, stdin will be used",
+		},
 		cli.StringFlag{
 			Name:  "input-format, f",
 			Value: formats.FASTA_FORMAT,
-			Usage: "INPUT_FORMAT must be one of the supported input types. Currently supported is 'fasta'",
-		},
-		cli.StringFlag{
-			Name:  "output-format, F",
-			Value: formats.FASTA_FORMAT,
-			Usage: "OUTPUT_FORMAT must be one of the supported output types. Currently supported are 'fasta' and 'tnt'",
-		},
-		cli.StringFlag{
-			Name:  "input-file, i",
-			Value: "--",
-			Usage: "INPUT_FILE, it must be a valid input, or '--', or blank.  if blank. or '--', will read from stdin",
-		},
-		cli.StringFlag{
-			Name:  "output-file, o",
-			Value: "--",
-			Usage: "OUTPUT_FILE, it must be a valid input, or '--', or blank.  if blank. or '--', will write to stdout",
-		},
-		cli.StringFlag{
-			Name:  "tnt-title, t",
-			Value: "",
-			Usage: "title for TNT output",
-		},
-		cli.StringFlag{
-			Name:  "outgroup",
-			Value: "",
-			Usage: "Optional OUTGROUP for TNT output.  If specified, this species will be used as the outgroup for TNT. " +
-				"Otherwise the first (alphabetically) will be used.  This must be left blank, or be a valid species name " +
-				"from the input",
+			Usage: "`INPUT_FORMAT` must be one of the supported input types. Currently only 'fasta' is supported",
 		},
 	}
-	fatalWithUsage := func(c *cli.Context, err error) {
-		if err != nil {
-			fmt.Fprintln(c.App.Writer, err.Error())
-			cli.ShowAppHelp(c)
+
+	app.Commands = []cli.Command{
+		cli.Command{
+			Name:        "fasta",
+			Usage:       "Convert to `fasta` format",
+			UsageText:   "This will convert the input to a fasta formatted file.",
+			Description: "This requires an input file or directory, and an input format.  If you do not specify an OUTPUT_FILE, then the output will be written to stdout",
+			ArgsUsage:   "[OUTPUT_FILE]",
+			Before:      parseInput,
+			Action: func(c *cli.Context) error {
+				return handleFastaOutput(sequences, c.Args().First())
+			},
+		},
+	}
+
+	app.Commands = []cli.Command{
+		cli.Command{
+			Name:        "tnt",
+			Usage:       "Convert to `TNT` format",
+			UsageText:   "This will convert the input to a TNT formatted file.",
+			Description: "This requires an input file or directory, and an input format.  You can specify the outgroup and title of the file.  If you do not specify an OUTPUT_FILE, then the output will be written to stdout",
+			ArgsUsage:   "[OUTPUT_FILE]",
+			Before:      parseInput,
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:  "outgroup",
+					Value: "",
+					Usage: "Optional `OUTGROUP` for TNT output.  If specified, this species will be used as the outgroup for TNT. " +
+						"Otherwise the first (alphabetically) will be used.  This must be left blank, or be a valid species name " +
+						"from the input",
+				},
+				cli.StringFlag{
+					Name:  "tnt-title, t",
+					Value: "",
+					Usage: "`TITLE` for TNT output",
+				},
+			},
+			Action: func(c *cli.Context) error {
+				fmt.Fprintf(os.Stderr, "Output format is TNT; serializing\n")
+				context := TNTContext{
+					Title:    c.String("title"),
+					Outgroup: c.String("outgroup"),
+				}
+				return handleTNTOutput(context, sequences, c.Args().First())
+			},
+		},
+	}
+
+	if err := app.Run(os.Args); err != nil {
+		switch e := err.(type) {
+		case CommandError:
+			e.UsageAndFail()
+		default:
+			fmt.Fprintln(os.Stderr, err.Error())
 			os.Exit(1)
 		}
 	}
-
-	app.Action = func(c *cli.Context) {
-		var sequences []sequence.Sequence
-		var err error
-
-		input := c.String("input-file")
-		output := c.String("output-file")
-		inputFormat := c.String("input-format")
-		outputFormat := c.String("output-format")
-
-		switch inputFormat {
-		case formats.FASTA_FORMAT:
-			sequences, err = handleFastaInput(input)
-		default:
-			err = fmt.Errorf("Unknown intput format '%s'", inputFormat)
-		}
-		fatalWithUsage(c, err)
-
-		switch outputFormat {
-		case formats.FASTA_FORMAT:
-			err = handleFastaOutput(sequences, output)
-		case formats.TNT_FORMAT:
-			fmt.Fprintf(os.Stderr, "Output format is TNT; serializing\n")
-			context := TNTContext{
-				Title:    c.String("title"),
-				Outgroup: c.String("outgroup"),
-			}
-			err = handleTNTOutput(context, sequences, output)
-		default:
-			err = fmt.Errorf("Unknown output format '%s'", inputFormat)
-		}
-		fatalWithUsage(c, err)
-	}
-
-	app.Run(os.Args)
 }
