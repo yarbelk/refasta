@@ -8,9 +8,9 @@ import (
 	"path"
 	"path/filepath"
 
-	flag "github.com/ogier/pflag"
 	"github.com/yarbelk/refasta/formats"
 	"github.com/yarbelk/refasta/sequence"
+	"gopkg.in/urfave/cli.v1"
 )
 
 type FakeReadCloser struct {
@@ -157,47 +157,87 @@ func handleTNTOutput(context TNTContext, sequences []sequence.Sequence, output s
 	return tnt.WriteSequences(fd)
 }
 
-func fatalWithUsage(err error) {
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error:\n%s\n\n", err.Error())
-		flag.PrintDefaults()
-		os.Exit(1)
-	}
-}
-
 func main() {
-	inputFormat := flag.StringP("input-format", "f", formats.FASTA_FORMAT, "intput format, must be 'fasta'")
-	outputFormat := flag.StringP("output-format", "F", formats.TNT_FORMAT, "output format, must be [fasta|tnt]")
-	input := flag.StringP("input-file", "i", "--", "input file, it must be a valid input, or '--', or blank.  if blank. or '--', will read from stdin")
-	output := flag.StringP("output-file", "o", "--", "output file, it must be a valid input, or '--', or blank.  if blank. or '--', will write to stdout")
-	tntTitle := flag.StringP("tnt-title", "t", "", "title for TNT output")
-	outgroup := flag.String("outgroup", "", "outgroup for TNT")
-	flag.Parse()
 
-	var sequences []sequence.Sequence
-	var err error
+	app := cli.NewApp()
+	app.Name = "refasta"
+	app.Usage = `Convert various genitics data formats into other formats.
+	Currently only fasta and tnt are supported, and in an opinionated way.`
 
-	switch *inputFormat {
-	case formats.FASTA_FORMAT:
-		sequences, err = handleFastaInput(*input)
-	default:
-		err = fmt.Errorf("Unknown intput format '%s'", inputFormat)
+	app.Flags = []cli.Flag{
+		cli.StringFlag{
+			Name:  "input-format, f",
+			Value: formats.FASTA_FORMAT,
+			Usage: "INPUT_FORMAT must be one of the supported input types. Currently supported is 'fasta'",
+		},
+		cli.StringFlag{
+			Name:  "output-format, F",
+			Value: formats.FASTA_FORMAT,
+			Usage: "OUTPUT_FORMAT must be one of the supported output types. Currently supported are 'fasta' and 'tnt'",
+		},
+		cli.StringFlag{
+			Name:  "input-file, i",
+			Value: "--",
+			Usage: "INPUT_FILE, it must be a valid input, or '--', or blank.  if blank. or '--', will read from stdin",
+		},
+		cli.StringFlag{
+			Name:  "output-file, o",
+			Value: "--",
+			Usage: "OUTPUT_FILE, it must be a valid input, or '--', or blank.  if blank. or '--', will write to stdout",
+		},
+		cli.StringFlag{
+			Name:  "tnt-title, t",
+			Value: "",
+			Usage: "title for TNT output",
+		},
+		cli.StringFlag{
+			Name:  "outgroup",
+			Value: "",
+			Usage: "Optional OUTGROUP for TNT output.  If specified, this species will be used as the outgroup for TNT. " +
+				"Otherwise the first (alphabetically) will be used.  This must be left blank, or be a valid species name " +
+				"from the input",
+		},
 	}
-	fatalWithUsage(err)
-
-	switch *outputFormat {
-	case formats.FASTA_FORMAT:
-		err = handleFastaOutput(sequences, *output)
-	case formats.TNT_FORMAT:
-		fmt.Fprintf(os.Stderr, "Output format is TNT; serializing\n")
-		context := TNTContext{
-			Title:    *tntTitle,
-			Outgroup: *outgroup,
+	fatalWithUsage := func(c *cli.Context, err error) {
+		if err != nil {
+			fmt.Fprintln(c.App.Writer, err.Error())
+			cli.ShowAppHelp(c)
+			os.Exit(1)
 		}
-		err = handleTNTOutput(context, sequences, *output)
-	default:
-		err = fmt.Errorf("Unknown output format '%s'", inputFormat)
 	}
-	fatalWithUsage(err)
 
+	app.Action = func(c *cli.Context) {
+		var sequences []sequence.Sequence
+		var err error
+
+		input := c.String("input-file")
+		output := c.String("output-file")
+		inputFormat := c.String("input-format")
+		outputFormat := c.String("output-format")
+
+		switch inputFormat {
+		case formats.FASTA_FORMAT:
+			sequences, err = handleFastaInput(input)
+		default:
+			err = fmt.Errorf("Unknown intput format '%s'", inputFormat)
+		}
+		fatalWithUsage(c, err)
+
+		switch outputFormat {
+		case formats.FASTA_FORMAT:
+			err = handleFastaOutput(sequences, output)
+		case formats.TNT_FORMAT:
+			fmt.Fprintf(os.Stderr, "Output format is TNT; serializing\n")
+			context := TNTContext{
+				Title:    c.String("title"),
+				Outgroup: c.String("outgroup"),
+			}
+			err = handleTNTOutput(context, sequences, output)
+		default:
+			err = fmt.Errorf("Unknown output format '%s'", inputFormat)
+		}
+		fatalWithUsage(c, err)
+	}
+
+	app.Run(os.Args)
 }

@@ -1,0 +1,10 @@
+hash: 853ba506949a3bdd78732a0891c644e9e68f78e7653f48448607d85c2ea94afe
+updated: 2016-07-22T10:21:49.575310429+08:00
+imports:
+- name: github.com/alecthomas/template
+  version: a0175ee3bccc567396460bf5acd36800cb10c49c
+  subpackages:
+  - parse
+- name: gopkg.in/urfave/cli.v1
+  version: 1efa31f08b9333f1bd4882d61f9d668a70cd902e
+testImports: []
