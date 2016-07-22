@@ -15,6 +15,8 @@ import (
 
 var sequences []sequence.Sequence
 
+var version string
+
 type CommandError struct {
 	error
 	c *cli.Context
@@ -190,7 +192,12 @@ func main() {
 	app := cli.NewApp()
 	app.Name = "refasta"
 	app.Usage = "Convert various genitics data formats into other formats. " +
-		"Currently only fasta and tnt are supported, and in an opinionated way."
+		"Currently only fasta and tnt are supported, and in an opinionated way.\n\n" +
+		"    To see the options for an output file type, run\n\n" +
+		"        refasta help <filetype>\n\n" +
+		"    For Example\n\n" +
+		"        refasta help tnt"
+	app.Version = version
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
 			Name:  "input, i",
@@ -216,9 +223,6 @@ func main() {
 				return handleFastaOutput(sequences, c.Args().First())
 			},
 		},
-	}
-
-	app.Commands = []cli.Command{
 		cli.Command{
 			Name:        "tnt",
 			Usage:       "Convert to `TNT` format",
