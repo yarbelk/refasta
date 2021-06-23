@@ -3,6 +3,7 @@
 This is a program to convert various biology formats from one into another.
 
 *Warning* this project is Very Alpha, and its interface will change frequently.
+Its also abandoned as my reasons for developing this have dried up.
 
 This is born out of the complexity that arrises from the abuse and missuse of
 biology file formats, such as [fasta](https://en.wikipedia.org/wiki/FASTA),
